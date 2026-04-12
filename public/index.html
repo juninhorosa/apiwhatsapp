@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp API - Render</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+        }
+        h1 {
+            color: #25d366;
+            margin-bottom: 1.5rem;
+        }
+        #status {
+            font-weight: bold;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 1.5rem;
+        }
+        .status-disconnected { background: #fee2e2; color: #991b1b; }
+        .status-qr_ready { background: #fef3c7; color: #92400e; }
+        .status-connected { background: #dcfce7; color: #166534; }
+        #qr-container {
+            margin: 1rem 0;
+            display: flex;
+            justify-content: center;
+        }
+        img {
+            max-width: 250px;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 8px;
+        }
+        .instructions {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 1rem;
+        }
+        .api-info {
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid #eee;
+            font-size: 0.8rem;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>WhatsApp API</h1>
+        <div id="status" class="status-disconnected">Desconectado</div>
+        
+        <div id="qr-container">
+            <p id="loading-msg">Aguardando QR Code...</p>
+        </div>
+
+        <div class="instructions" id="instructions">
+            Abra o WhatsApp no seu celular, vá em Configurações > Aparelhos Conectados e escaneie o código acima.
+        </div>
+
+        <div class="api-info">
+            <p><strong>Endpoint:</strong> /send-message</p>
+            <p><strong>Método:</strong> POST</p>
+            <p><strong>Corpo:</strong> { "number": "5511999999999", "message": "Olá!" }</p>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        const statusEl = document.getElementById('status');
+        const qrContainer = document.getElementById('qr-container');
+        const loadingMsg = document.getElementById('loading-msg');
+        const instructions = document.getElementById('instructions');
+
+        socket.on('status', (status) => {
+            statusEl.textContent = getStatusLabel(status);
+            statusEl.className = 'status-' + status;
+            
+            if (status === 'connected') {
+                qrContainer.innerHTML = '<h3>✅ Conectado com sucesso!</h3>';
+                instructions.style.display = 'none';
+            } else if (status === 'disconnected') {
+                qrContainer.innerHTML = '<p id="loading-msg">Aguardando conexão...</p>';
+                instructions.style.display = 'block';
+            }
+        });
+
+        socket.on('qr', (qrData) => {
+            qrContainer.innerHTML = `<img src="${qrData}" alt="WhatsApp QR Code">`;
+        });
+
+        function getStatusLabel(status) {
+            switch(status) {
+                case 'connected': return 'Conectado';
+                case 'qr_ready': return 'Aguardando Escaneamento';
+                case 'disconnected': return 'Desconectado';
+                default: return 'Desconhecido';
+            }
+        }
+    </script>
+</body>
+</html>

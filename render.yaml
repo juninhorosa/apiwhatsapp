@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: whatsapp-api
+    runtime: docker
+    plan: free # Você pode mudar para "starter" se precisar de mais recursos
+    envVars:
+      - key: PORT
+        value: 3000
+      - key: NODE_ENV
+        value: production
+    # Configuração de Disco Persistente (Obrigatório para manter a sessão no Render)
+    # Nota: Discos persistentes não estão disponíveis no plano "Free" do Render.
+    # Se usar o plano Free, a sessão será perdida ao reiniciar.
+    # Para usar disco, mude o 'plan' para 'starter' ou superior.
+    # disk:
+    #   name: whatsapp-auth
+    #   mountPath: /app/auth_info_baileys
+    #   sizeGB: 1
