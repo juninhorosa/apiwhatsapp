@@ -34,11 +34,19 @@ No **Render Free Tier**, o sistema de arquivos é **efêmero**. Isso significa q
 
 Após a conexão (escaneamento do QR Code), você pode enviar mensagens usando o endpoint POST `/send-message`.
 
+### Autenticação
+Todas as requisições à API devem incluir a **API Key**. Você pode encontrar a sua chave diretamente na interface web do seu app no Render.
+
+**Como enviar a chave:**
+- No Header: `x-api-key: SUA_CHAVE`
+- Ou na URL: `?key=SUA_CHAVE`
+
 ### Exemplo de requisição (cURL):
 
 ```bash
 curl -X POST http://seu-app-no-render.onrender.com/send-message \
 -H "Content-Type: application/json" \
+-H "x-api-key: SUA_CHAVE_AQUI" \
 -d '{
   "number": "5511999999999",
   "message": "Olá, esta é uma mensagem enviada via API!"

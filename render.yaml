@@ -8,6 +8,8 @@ services:
         value: 3000
       - key: NODE_ENV
         value: production
+      - key: API_KEY
+        generateValue: true # Isso vai gerar uma chave aleatória no Render
     # Configuração de Disco Persistente (Obrigatório para manter a sessão no Render)
     # Nota: Discos persistentes não estão disponíveis no plano "Free" do Render.
     # Se usar o plano Free, a sessão será perdida ao reiniciar.

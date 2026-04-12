@@ -12,15 +12,27 @@ const { Server } = require('socket.io');
 const qrcode = require('qrcode');
 const path = require('path');
 const fs = require('fs');
+require('dotenv').config();
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
 const PORT = process.env.PORT || 3000;
+const API_KEY = process.env.API_KEY || 'minha-chave-secreta-123'; // Chave padrão caso não configurada
 const logger = P({ level: 'info' });
 
 app.use(express.json());
+
+// Middleware de autenticação
+const authMiddleware = (req, res, next) => {
+    const key = req.headers['x-api-key'] || req.query.key;
+    if (key && key === API_KEY) {
+        return next();
+    }
+    return res.status(401).json({ error: 'Não autorizado. Chave de API inválida.' });
+};
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/', (req, res) => {
@@ -82,6 +94,7 @@ async function connectToWhatsApp() {
 
 io.on('connection', (socket) => {
     socket.emit('status', connectionStatus);
+    socket.emit('api_key', API_KEY); // Envia a chave para a interface web
     if (qrCodeData) {
         socket.emit('qr', qrCodeData);
     }
@@ -92,11 +105,11 @@ app.get('/health', (req, res) => {
     res.status(200).json({ status: 'OK', connection: connectionStatus });
 });
 
-app.get('/status', (req, res) => {
+app.get('/status', authMiddleware, (req, res) => {
     res.json({ status: connectionStatus });
 });
 
-app.post('/send-message', async (req, res) => {
+app.post('/send-message', authMiddleware, async (req, res) => {
     const { number, message } = req.body;
     if (!sock || connectionStatus !== 'connected') {
         return res.status(400).json({ error: 'WhatsApp not connected' });
