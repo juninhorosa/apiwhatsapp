@@ -12,6 +12,7 @@ const { Server } = require('socket.io');
 const qrcode = require('qrcode');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 require('dotenv').config();
 
 const app = express();
@@ -19,8 +20,27 @@ const server = http.createServer(app);
 const io = new Server(server);
 
 const PORT = process.env.PORT || 3000;
-const API_KEY = process.env.API_KEY || 'minha-chave-secreta-123'; // Chave padrão caso não configurada
 const logger = P({ level: 'info' });
+
+// Função para obter ou gerar uma API Key persistente
+function getApiKey() {
+    const keyPath = path.join(__dirname, 'auth_info_baileys', 'api_key.txt');
+    
+    // Se a pasta auth não existir, cria ela
+    if (!fs.existsSync(path.join(__dirname, 'auth_info_baileys'))) {
+        fs.mkdirSync(path.join(__dirname, 'auth_info_baileys'));
+    }
+
+    if (fs.existsSync(keyPath)) {
+        return fs.readFileSync(keyPath, 'utf8').trim();
+    } else {
+        const newKey = crypto.randomBytes(16).toString('hex');
+        fs.writeFileSync(keyPath, newKey);
+        return newKey;
+    }
+}
+
+let API_KEY = getApiKey();
 
 app.use(express.json());
 
@@ -81,7 +101,16 @@ async function connectToWhatsApp() {
         } else if (connection === 'open') {
             console.log('opened connection');
             connectionStatus = 'connected';
+            
+            // Ao conectar, geramos uma nova chave se desejar, ou apenas exibimos a atual.
+            // Para "chave aleatória por conexão", vamos gerar uma nova:
+            const keyPath = path.join(__dirname, 'auth_info_baileys', 'api_key.txt');
+            API_KEY = crypto.randomBytes(16).toString('hex');
+            fs.writeFileSync(keyPath, API_KEY);
+            console.log('Nova API Key gerada para esta conexão:', API_KEY);
+            
             io.emit('status', connectionStatus);
+            io.emit('api_key', API_KEY); // Atualiza na interface
             qrCodeData = null;
         }
     });

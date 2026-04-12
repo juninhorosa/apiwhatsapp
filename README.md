@@ -34,12 +34,12 @@ No **Render Free Tier**, o sistema de arquivos é **efêmero**. Isso significa q
 
 Após a conexão (escaneamento do QR Code), você pode enviar mensagens usando o endpoint POST `/send-message`.
 
-### Autenticação
-Todas as requisições à API devem incluir a **API Key**. Você pode encontrar a sua chave diretamente na interface web do seu app no Render.
+### Autenticação Dinâmica
+A **API Key** agora é gerada aleatoriamente para cada nova conexão do WhatsApp para garantir a segurança. Você pode visualizar a chave atual diretamente na interface web do seu servidor.
 
-**Como enviar a chave:**
-- No Header: `x-api-key: SUA_CHAVE`
-- Ou na URL: `?key=SUA_CHAVE`
+**Como enviar a chave nas requisições:**
+- No Header: `x-api-key: SUA_CHAVE_ATUAL`
+- Ou na URL: `?key=SUA_CHAVE_ATUAL`
 
 ### Exemplo de requisição (cURL):
 
