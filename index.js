@@ -139,17 +139,32 @@ app.get('/status', authMiddleware, (req, res) => {
 });
 
 app.post('/send-message', authMiddleware, async (req, res) => {
-    const { number, message } = req.body;
+    let { number, message } = req.body;
+    
     if (!sock || connectionStatus !== 'connected') {
         return res.status(400).json({ error: 'WhatsApp not connected' });
     }
 
+    if (!number || !message) {
+        return res.status(400).json({ error: 'Número e mensagem são obrigatórios' });
+    }
+
     try {
-        const jid = number.includes('@s.whatsapp.net') ? number : `${number}@s.whatsapp.net`;
-        await sock.sendMessage(jid, { text: message });
-        res.json({ success: true });
+        // Limpa o número: remove tudo que não for dígito
+        let cleanNumber = number.replace(/\D/g, '');
+        
+        // Garante que o número termina com @s.whatsapp.net
+        const jid = cleanNumber.includes('@s.whatsapp.net') ? cleanNumber : `${cleanNumber}@s.whatsapp.net`;
+        
+        console.log(`Tentando enviar mensagem para: ${jid}`);
+        
+        const result = await sock.sendMessage(jid, { text: message });
+        
+        console.log('Resultado do envio:', result ? 'Sucesso' : 'Falha');
+        res.json({ success: true, info: 'Mensagem enviada com sucesso' });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.error('Erro ao enviar mensagem:', err);
+        res.status(500).json({ error: 'Erro interno ao enviar mensagem', details: err.message });
     }
 });
 
