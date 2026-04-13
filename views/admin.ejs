@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Admin - WhatsApp SaaS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <nav class="bg-blue-800 p-4 text-white flex justify-between items-center shadow-md">
+        <h1 class="text-xl font-bold">Admin Panel</h1>
+        <div class="flex items-center space-x-4">
+            <a href="/dashboard" class="text-sm hover:underline">Ir para Dashboard</a>
+            <a href="/auth/logout" class="bg-red-500 hover:bg-red-700 text-white py-1 px-4 rounded text-sm">Sair</a>
+        </div>
+    </nav>
+
+    <div class="max-w-6xl mx-auto mt-10 p-6 bg-white rounded-lg shadow-md">
+        <h2 class="text-2xl font-bold mb-6">Gerenciamento de Usuários</h2>
+        
+        <div class="overflow-x-auto">
+            <table class="min-w-full bg-white">
+                <thead class="bg-gray-800 text-white">
+                    <tr>
+                        <th class="py-3 px-4 text-left">Nome</th>
+                        <th class="py-3 px-4 text-left">Email</th>
+                        <th class="py-3 px-4 text-left">Plano</th>
+                        <th class="py-3 px-4 text-left">Uso Hoje</th>
+                        <th class="py-3 px-4 text-left">Status</th>
+                        <th class="py-3 px-4 text-left">Ações</th>
+                    </tr>
+                </thead>
+                <tbody class="text-gray-700">
+                    <% users.forEach(user => { %>
+                    <tr class="border-b">
+                        <td class="py-3 px-4"><%= user.name %></td>
+                        <td class="py-3 px-4"><%= user.email %></td>
+                        <td class="py-3 px-4">
+                            <span class="px-2 py-1 rounded text-xs font-bold <%= user.plan === 'premium' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800' %>">
+                                <%= user.plan %>
+                            </span>
+                        </td>
+                        <td class="py-3 px-4 text-sm"><%= user.messagesSentToday %> / <%= user.dailyLimit %></td>
+                        <td class="py-3 px-4">
+                            <span class="px-2 py-1 rounded text-xs font-bold <%= user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' %>">
+                                <%= user.status %>
+                            </span>
+                        </td>
+                        <td class="py-3 px-4 flex space-x-2">
+                            <button onclick="updateUser('<%= user._id %>', { plan: '<%= user.plan === 'premium' ? 'free' : 'premium' %>' })" class="text-xs bg-blue-500 hover:bg-blue-600 text-white py-1 px-2 rounded">
+                                <%= user.plan === 'premium' ? 'Tornar Free' : 'Tornar Premium' %>
+                            </button>
+                            <button onclick="updateUser('<%= user._id %>', { status: '<%= user.status === 'active' ? 'blocked' : 'active' %>' })" class="text-xs <%= user.status === 'active' ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600' %> text-white py-1 px-2 rounded">
+                                <%= user.status === 'active' ? 'Bloquear' : 'Desbloquear' %>
+                            </button>
+                        </td>
+                    </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        async function updateUser(userId, data) {
+            if (confirm('Deseja realmente atualizar este usuário?')) {
+                const res = await fetch(`/admin/users/${userId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                if (result.success) {
+                    location.reload();
+                } else {
+                    alert(result.error);
+                }
+            }
+        }
+    </script>
+</body>
+</html>

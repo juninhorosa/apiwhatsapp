@@ -13,8 +13,8 @@ RUN npm install --omit=dev
 
 COPY . .
 
-# Create the auth directory
-RUN mkdir -p auth_info_baileys
+# Create the sessions directory
+RUN mkdir -p sessions
 
 EXPOSE 3000
 

@@ -1,228 +1,113 @@
-const {
-    makeWASocket,
-    useMultiFileAuthState,
-    DisconnectReason,
-    fetchLatestBaileysVersion,
-} = require('@whiskeysockets/baileys');
-const { Boom } = require('@hapi/boom');
-const P = require('pino');
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const qrcode = require('qrcode');
+const mongoose = require('mongoose');
 const path = require('path');
-const fs = require('fs');
-const crypto = require('crypto');
-require('dotenv').config();
+const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const cookieParser = require('cookie-parser');
+const dotenv = require('dotenv');
+const WhatsAppManager = require('./services/WhatsAppManager');
+const authRoutes = require('./routes/auth');
+const apiRoutes = require('./routes/api');
+const { authMiddleware, adminMiddleware } = require('./middleware/auth');
+
+dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+    cors: { origin: '*' }
+});
 
 const PORT = process.env.PORT || 3000;
-const logger = P({ level: 'info' });
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/whatsapp-saas';
 
+// Security Middlewares
+app.use(helmet({
+    contentSecurityPolicy: false, // Disabilitado para facilitar o uso de recursos externos no painel
+}));
+app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
-// Middleware para logar todas as requisições (ajuda no diagnóstico)
+// Rate limiting
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutos
+    max: 100 // Limite por IP
+});
+app.use('/auth/', limiter);
+
+// View engine
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
+app.use(express.static(path.join(__dirname, 'public')));
+
+// WhatsApp Manager
+const whatsAppManager = new WhatsAppManager(io);
+
+// Pass WhatsApp Manager to request
 app.use((req, res, next) => {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    req.whatsAppManager = whatsAppManager;
     next();
 });
 
-// Função para obter ou gerar uma API Key persistente
-function getApiKey() {
-    const keyPath = path.join(__dirname, 'auth_info_baileys', 'api_key.txt');
-    
-    // Se a pasta auth não existir, cria ela
-    if (!fs.existsSync(path.join(__dirname, 'auth_info_baileys'))) {
-        fs.mkdirSync(path.join(__dirname, 'auth_info_baileys'));
-    }
-
-    if (fs.existsSync(keyPath)) {
-        return fs.readFileSync(keyPath, 'utf8').trim();
-    } else {
-        const newKey = crypto.randomBytes(16).toString('hex');
-        fs.writeFileSync(keyPath, newKey);
-        return newKey;
-    }
-}
-
-let API_KEY = getApiKey();
-
-app.use(express.json());
-
-// Middleware de autenticação
-const authMiddleware = (req, res, next) => {
-    const key = req.headers['x-api-key'] || req.query.key;
-    if (key && key === API_KEY) {
-        return next();
-    }
-    return res.status(401).json({ error: 'Não autorizado. Chave de API inválida.' });
+// Database connection
+const mongoOptions = {
+    serverSelectionTimeoutMS: 5000,
+    socketTimeoutMS: 45000,
 };
 
-app.use(express.static(path.join(__dirname, 'public')));
+mongoose.connect(MONGO_URI, mongoOptions)
+    .then(() => console.log('MongoDB connected successfully'))
+    .catch(err => {
+        console.error('MongoDB connection error:', err);
+        console.log('DICA: Se estiver usando MongoDB Atlas, verifique se seu IP está na Whitelist e se a URI está correta.');
+    });
 
-app.get('/', (req, res) => {
-    const indexPath = path.join(__dirname, 'public', 'index.html');
-    if (fs.existsSync(indexPath)) {
-        res.sendFile(indexPath);
-    } else {
-        res.status(404).send('Interface web (index.html) não encontrada. Verifique se a pasta "public" foi enviada corretamente para o repositório.');
+// Routes
+app.use('/auth', authRoutes);
+app.use('/api', apiRoutes);
+
+// User Dashboard
+app.get('/dashboard', authMiddleware, async (req, res) => {
+    const user = req.user;
+    const session = await whatsAppManager.getSession(user._id.toString());
+    res.render('dashboard', { user, sessionStatus: session.status });
+});
+
+// Admin Panel
+app.get('/admin', authMiddleware, adminMiddleware, async (req, res) => {
+    const User = require('./models/User');
+    const users = await User.find();
+    res.render('admin', { users });
+});
+
+app.patch('/admin/users/:id', authMiddleware, adminMiddleware, async (req, res) => {
+    const User = require('./models/User');
+    try {
+        await User.findByIdAndUpdate(req.params.id, req.body);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: 'Erro ao atualizar usuário' });
     }
 });
 
-let sock;
-let qrCodeData;
-let connectionStatus = 'disconnected';
+// Public pages
+app.get('/login', (req, res) => res.render('login'));
+app.get('/register', (req, res) => res.render('register'));
+app.get('/', (req, res) => res.render('landing'));
 
-async function connectToWhatsApp() {
-    const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
-    const { version, isLatest } = await fetchLatestBaileysVersion();
-
-    sock = makeWASocket({
-        version,
-        auth: state,
-        logger,
-    });
-
-    sock.ev.on('creds.update', saveCreds);
-
-    sock.ev.on('connection.update', async (update) => {
-        const { connection, lastDisconnect, qr } = update;
-
-        if (qr) {
-            qrCodeData = await qrcode.toDataURL(qr);
-            io.emit('qr', qrCodeData);
-            connectionStatus = 'qr_ready';
-            io.emit('status', connectionStatus);
-        }
-
-        if (connection === 'close') {
-            const statusCode = (lastDisconnect.error instanceof Boom) ? lastDisconnect.error.output.statusCode : 0;
-            const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
-            
-            console.log(`Conexão encerrada. Código: ${statusCode}. Motivo:`, lastDisconnect.error);
-            console.log('Tentando reconectar:', shouldReconnect);
-            
-            connectionStatus = 'disconnected';
-            io.emit('status', connectionStatus);
-
-            if (shouldReconnect) {
-                // Pequeno delay antes de tentar reconectar para evitar loop infinito
-                setTimeout(() => connectToWhatsApp(), 5000);
-            }
-        } else if (connection === 'open') {
-            console.log('opened connection');
-            connectionStatus = 'connected';
-            
-            // Ao conectar, geramos uma nova chave se desejar, ou apenas exibimos a atual.
-            // Para "chave aleatória por conexão", vamos gerar uma nova:
-            const keyPath = path.join(__dirname, 'auth_info_baileys', 'api_key.txt');
-            API_KEY = crypto.randomBytes(16).toString('hex');
-            fs.writeFileSync(keyPath, API_KEY);
-            console.log('Nova API Key gerada para esta conexão:', API_KEY);
-            
-            io.emit('status', connectionStatus);
-            io.emit('api_key', API_KEY); // Atualiza na interface
-            qrCodeData = null;
-        }
-    });
-
-    sock.ev.on('messages.upsert', async (m) => {
-        // Handle incoming messages here if needed
-        // console.log(JSON.stringify(m, undefined, 2));
-    });
-}
-
+// Socket.io for QR updates
 io.on('connection', (socket) => {
-    socket.emit('status', connectionStatus);
-    socket.emit('api_key', API_KEY); // Envia a chave para a interface web
-    if (qrCodeData) {
-        socket.emit('qr', qrCodeData);
-    }
-});
-
-// API Routes
-app.get('/health', (req, res) => {
-    res.status(200).json({ status: 'OK', connection: connectionStatus });
-});
-
-app.get('/status', authMiddleware, (req, res) => {
-    res.json({ status: connectionStatus });
-});
-
-app.post('/logout', authMiddleware, async (req, res) => {
-    console.log('Solicitação de logout recebida...');
-    try {
-        // Tenta fazer o logout formal, mas não trava se der erro
-        if (sock) {
-            try {
-                await sock.logout();
-                sock.end();
-            } catch (e) {
-                console.log('Erro ao encerrar socket (provavelmente já desconectado)');
-            }
-        }
-        
-        // FORÇA a remoção da pasta de autenticação
-        const authPath = path.join(__dirname, 'auth_info_baileys');
-        if (fs.existsSync(authPath)) {
-            console.log('Removendo pasta de autenticação...');
-            fs.rmSync(authPath, { recursive: true, force: true });
-        }
-        
-        connectionStatus = 'disconnected';
-        qrCodeData = null;
-        io.emit('status', connectionStatus);
-        
-        res.json({ success: true, message: 'Sessão limpa com sucesso' });
-        
-        // Reinicia o processo de conexão do zero
-        console.log('Reiniciando conexão em 2 segundos...');
-        setTimeout(() => {
-            connectToWhatsApp();
-        }, 2000);
-        
-    } catch (err) {
-        console.error('Erro crítico no logout:', err);
-        // Mesmo com erro, tentamos avisar o frontend para resetar
-        res.json({ success: true, message: 'Reset forçado executado' });
-        setTimeout(() => connectToWhatsApp(), 2000);
-    }
-});
-
-app.post('/send-message', authMiddleware, async (req, res) => {
-    let { number, message } = req.body;
-    
-    if (!sock || connectionStatus !== 'connected') {
-        return res.status(400).json({ error: 'WhatsApp not connected' });
-    }
-
-    if (!number || !message) {
-        return res.status(400).json({ error: 'Número e mensagem são obrigatórios' });
-    }
-
-    try {
-        // Limpa o número: remove tudo que não for dígito
-        let cleanNumber = number.replace(/\D/g, '');
-        
-        // Garante que o número termina com @s.whatsapp.net
-        const jid = cleanNumber.includes('@s.whatsapp.net') ? cleanNumber : `${cleanNumber}@s.whatsapp.net`;
-        
-        console.log(`Tentando enviar mensagem para: ${jid}`);
-        
-        const result = await sock.sendMessage(jid, { text: message });
-        
-        console.log('Resultado do envio:', result ? 'Sucesso' : 'Falha');
-        res.json({ success: true, info: 'Mensagem enviada com sucesso' });
-    } catch (err) {
-        console.error('Erro ao enviar mensagem:', err);
-        res.status(500).json({ error: 'Erro interno ao enviar mensagem', details: err.message });
-    }
+    socket.on('join', (userId) => {
+        socket.join(userId);
+        console.log(`User ${userId} joined their channel`);
+    });
 });
 
 server.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-    connectToWhatsApp();
+    console.log(`SaaS Server running on port ${PORT}`);
 });

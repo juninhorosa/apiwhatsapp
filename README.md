@@ -1,60 +1,61 @@
-# WhatsApp API - Deploy no Render
+# WhatsApp API SaaS Gateway
 
-Este é um sistema de API para WhatsApp construído com Node.js e a biblioteca Baileys. Ele inclui um servidor Express com Socket.io para exibir o QR Code em tempo real.
+Sistema profissional de API para WhatsApp com gestão de usuários, teste diário e painel administrativo.
 
-## Como implantar no Render
+## ✨ Funcionalidades
 
-1.  Crie um novo repositório no GitHub e faça o push de todos os arquivos.
-2.  No [Render](https://render.com/), você tem duas opções:
+- **Multi-instância**: Cada usuário tem sua própria conexão independente.
+- **Painel do Usuário**: Conecte seu WhatsApp via QR Code, visualize sua API Key e acompanhe o uso.
+- **Painel Administrativo**: Gerencie usuários, altere planos (Free/Premium) e monitore o sistema.
+- **API Segura**: Autenticação via JWT para o painel e `x-api-key` para a API de envios.
+- **Teste Diário**: Limite automático de mensagens por dia para usuários no plano gratuito.
+- **Segurança Robusta**: Proteção contra ataques de força bruta, headers de segurança (Helmet) e hashing de senhas com Bcrypt.
 
-### Opção A: Deploy Manual (Recomendado para Testes Gratuitos)
-*   Clique em **New +** e selecione **Web Service**.
-*   Conecte seu repositório do GitHub.
-*   **Configurações:**
-    *   **Runtime:** `Docker` (Obrigatório).
-    *   **Plan:** `Free`.
-*   Clique em **Create Web Service**.
+## 🚀 Como Rodar (Docker)
 
-### Opção B: Render Blueprint (Configuração Automática)
-*   O arquivo `render.yaml` incluído já define o serviço.
-*   No Render Dashboard, clique em **Blueprints** > **New Blueprint Instance**.
-*   Conecte seu repositório.
+A forma mais fácil e recomendada de rodar o sistema é usando Docker Compose.
 
-## Notas Importantes sobre a Sessão (WhatsApp)
+1.  Clone o repositório.
+2.  Crie um arquivo `.env` baseado no exemplo abaixo:
+    ```env
+    PORT=3000
+    NODE_ENV=production
+    JWT_SECRET=sua-chave-secreta-longa-e-segura
+    MONGO_URI=mongodb://mongodb:27017/whatsapp-saas
+    ```
+3.  Suba os containers:
+    ```bash
+    docker compose up -d
+    ```
+4.  Acesse `http://localhost:3000`. O primeiro usuário registrado será automaticamente um **Administrador**.
 
-No **Render Free Tier**, o sistema de arquivos é **efêmero**. Isso significa que a pasta `auth_info_baileys` (onde a sessão do WhatsApp fica salva) será **apagada** toda vez que:
-*   O serviço entrar em modo "hibernação" (sleep) após 15 minutos sem uso.
-*   O serviço for reiniciado ou um novo deploy for feito.
+## 🛠️ Tecnologias Utilizadas
 
-**Para produção, você tem duas soluções:**
-1.  **Plano Pago (Starter):** Use a configuração `disk` no `render.yaml` para ter um disco persistente de 1GB.
-2.  **Solução em Código:** Você pode modificar o `index.js` para salvar a sessão em um banco de dados (MongoDB, PostgreSQL, etc.) em vez de arquivos locais.
+- **Backend**: Node.js com Express.
+- **Banco de Dados**: MongoDB com Mongoose.
+- **WhatsApp**: @whiskeysockets/baileys (leve e performático).
+- **Frontend**: EJS com Tailwind CSS.
+- **Comunicação Real-time**: Socket.io.
 
-## Como usar a API
+## 📄 API de Envios
 
-Após a conexão (escaneamento do QR Code), você pode enviar mensagens usando o endpoint POST `/send-message`.
+**Endpoint**: `POST /api/send-message`
 
-### Autenticação Dinâmica
-A **API Key** agora é gerada aleatoriamente para cada nova conexão do WhatsApp para garantir a segurança. Você pode visualizar a chave atual diretamente na interface web do seu servidor.
+**Headers**:
+- `Content-Type: application/json`
+- `x-api-key: SUA_API_KEY_AQUI`
 
-**Como enviar a chave nas requisições:**
-- No Header: `x-api-key: SUA_CHAVE_ATUAL`
-- Ou na URL: `?key=SUA_CHAVE_ATUAL`
-
-### Exemplo de requisição (cURL):
-
-```bash
-curl -X POST http://seu-app-no-render.onrender.com/send-message \
--H "Content-Type: application/json" \
--H "x-api-key: SUA_CHAVE_AQUI" \
--d '{
+**Body**:
+```json
+{
   "number": "5511999999999",
-  "message": "Olá, esta é uma mensagem enviada via API!"
-}'
+  "message": "Sua mensagem aqui"
+}
 ```
 
-**Nota:** O número deve incluir o código do país (ex: 55 para Brasil) e o DDD.
+## 🔐 Segurança
 
-## Notas importantes para o Render Free Tier
-
-O plano gratuito do Render desativa o serviço após inatividade e não possui disco persistente gratuito. Isso significa que a conexão do WhatsApp pode cair se o serviço "dormir" ou reiniciar. Para produção, considere o plano pago ou adicione um [Persistent Disk](https://render.com/docs/disks).
+- **Rate Limiting**: Proteção contra abusos na API e login.
+- **Helmet**: Headers HTTP seguros.
+- **JWT**: Sessões seguras no painel.
+- **Bcrypt**: Armazenamento seguro de senhas.

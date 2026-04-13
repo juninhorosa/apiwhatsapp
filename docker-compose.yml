@@ -1,13 +1,11 @@
-version: '3.8'
-
 services:
-  whatsapp-api:
+  app:
     build: .
     ports:
       - "3000:3000"
+    env_file: .env
     volumes:
-      - ./auth_info_baileys:/app/auth_info_baileys
-    environment:
-      - PORT=3000
-      - NODE_ENV=development
-    restart: unless-stopped
+      - ./sessions:/sessions
+    restart: always
+
+# Serviço do MongoDB Local REMOVIDO para economizar RAM da VPS (Usando MongoDB Atlas na Nuvem)

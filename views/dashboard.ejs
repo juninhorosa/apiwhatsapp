@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - WhatsApp SaaS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <nav class="bg-green-600 p-4 text-white flex justify-between items-center shadow-md">
+        <h1 class="text-xl font-bold">WhatsApp SaaS</h1>
+        <div class="flex items-center space-x-4">
+            <span>Olá, <%= user.name %></span>
+            <a href="/auth/logout" class="bg-red-500 hover:bg-red-700 text-white py-1 px-4 rounded text-sm">Sair</a>
+        </div>
+    </nav>
+
+    <div class="max-w-4xl mx-auto mt-10 p-6 bg-white rounded-lg shadow-md">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- Connection Status -->
+            <div class="border-r border-gray-200 pr-6">
+                <h2 class="text-xl font-semibold mb-4">Conexão WhatsApp</h2>
+                <div id="statusContainer" class="flex items-center space-x-2 mb-6">
+                    <span id="statusBadge" class="px-3 py-1 rounded-full text-xs font-bold uppercase <%= user.status === 'connected' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' %>">
+                        <%= sessionStatus === 'connected' ? 'Conectado' : (sessionStatus === 'qr_ready' ? 'Aguardando QR' : 'Desconectado') %>
+                    </span>
+                </div>
+
+                <div id="qrContainer" class="flex flex-col items-center justify-center p-4 bg-gray-50 rounded border border-dashed border-gray-300 min-h-[300px]">
+                    <p id="qrText" class="text-sm text-gray-500 mb-4 text-center">Escaneie o QR Code abaixo com seu WhatsApp para conectar.</p>
+                    <img id="qrImage" src="" alt="QR Code" class="w-64 h-64 <%= sessionStatus === 'qr_ready' ? '' : 'hidden' %>">
+                    <div id="connectedIcon" class="<%= sessionStatus === 'connected' ? '' : 'hidden' %> text-green-500 text-6xl">
+                        ✓
+                    </div>
+                </div>
+                <button id="logoutBtn" class="mt-4 w-full bg-red-100 hover:bg-red-200 text-red-700 py-2 rounded font-semibold text-sm">Desconectar WhatsApp</button>
+            </div>
+
+            <!-- Account & API -->
+            <div>
+                <h2 class="text-xl font-semibold mb-4">Sua Conta & API</h2>
+                <div class="mb-6">
+                    <p class="text-sm text-gray-600 mb-1">Plano Atual</p>
+                    <div class="flex items-center justify-between">
+                        <span class="text-lg font-bold text-green-600 uppercase"><%= user.plan %></span>
+                        <% if(user.plan === 'free') { %>
+                            <a href="#" class="text-xs text-blue-600 hover:underline">Fazer Upgrade</a>
+                        <% } %>
+                    </div>
+                </div>
+
+                <% if(user.plan === 'free') { %>
+                <div class="mb-6">
+                    <p class="text-sm text-gray-600 mb-1">Uso Diário (Teste)</p>
+                    <div class="w-full bg-gray-200 rounded-full h-2.5">
+                        <div class="bg-green-600 h-2.5 rounded-full" style="width: <%= (user.messagesSentToday / user.dailyLimit) * 100 %>%"></div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1"><%= user.messagesSentToday %> / <%= user.dailyLimit %> mensagens enviadas hoje</p>
+                </div>
+                <% } %>
+
+                <div class="mb-6">
+                    <p class="text-sm text-gray-600 mb-1">Sua API Key</p>
+                    <div class="flex items-center bg-gray-100 p-2 rounded">
+                        <code id="apiKey" class="text-xs break-all text-gray-700"><%= user.apiKey %></code>
+                        <button onclick="copyKey()" class="ml-2 text-xs bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded">Copiar</button>
+                    </div>
+                    <p class="text-[10px] text-gray-400 mt-1">Mantenha esta chave em segredo. Use no cabeçalho `x-api-key` em suas requisições.</p>
+                </div>
+
+                <div class="p-4 bg-blue-50 border border-blue-200 rounded mb-6">
+                    <h3 class="text-sm font-bold text-blue-800 mb-2">Como usar a API:</h3>
+                    <pre class="text-[10px] bg-white p-2 border rounded overflow-x-auto text-gray-600">POST /api/send-message
+Headers: {
+  'Content-Type': 'application/json',
+  'x-api-key': '<%= user.apiKey %>'
+}
+Body: {
+  "number": "5511999999999",
+  "message": "Olá mundo!"
+}</pre>
+                </div>
+
+                <!-- Message History -->
+                <div>
+                    <h3 class="text-sm font-bold text-gray-800 mb-4">Últimos Envios</h3>
+                    <div id="historyTable" class="bg-gray-50 border rounded-lg overflow-hidden">
+                        <table class="min-w-full text-[10px] text-left">
+                            <thead class="bg-gray-200 text-gray-700 uppercase">
+                                <tr>
+                                    <th class="py-2 px-3">Número</th>
+                                    <th class="py-2 px-3">Status</th>
+                                    <th class="py-2 px-3">Data</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historyBody">
+                                <!-- Preenchido via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        const userId = "<%= user._id %>";
+        const apiKey = "<%= user.apiKey %>";
+
+        socket.emit('join', userId);
+
+        const statusBadge = document.getElementById('statusBadge');
+        const qrImage = document.getElementById('qrImage');
+        const qrText = document.getElementById('qrText');
+        const connectedIcon = document.getElementById('connectedIcon');
+
+        socket.on('status', (status) => {
+            console.log('Status update:', status);
+            updateStatusUI(status);
+        });
+
+        socket.on('qr', (qr) => {
+            qrImage.src = qr;
+            qrImage.classList.remove('hidden');
+            qrText.classList.remove('hidden');
+            connectedIcon.classList.add('hidden');
+        });
+
+        function updateStatusUI(status) {
+            if (status === 'connected') {
+                statusBadge.innerText = 'Conectado';
+                statusBadge.className = 'px-3 py-1 rounded-full text-xs font-bold uppercase bg-green-100 text-green-800';
+                qrImage.classList.add('hidden');
+                qrText.classList.add('hidden');
+                connectedIcon.classList.remove('hidden');
+            } else if (status === 'qr_ready') {
+                statusBadge.innerText = 'Aguardando QR';
+                statusBadge.className = 'px-3 py-1 rounded-full text-xs font-bold uppercase bg-yellow-100 text-yellow-800';
+            } else {
+                statusBadge.innerText = 'Desconectado';
+                statusBadge.className = 'px-3 py-1 rounded-full text-xs font-bold uppercase bg-red-100 text-red-800';
+                qrImage.classList.add('hidden');
+                qrText.classList.remove('hidden');
+                connectedIcon.classList.add('hidden');
+            }
+        }
+
+        async function loadHistory() {
+            const res = await fetch(`/api/history?key=${apiKey}`);
+            const data = await res.json();
+            const tbody = document.getElementById('historyBody');
+            tbody.innerHTML = '';
+            
+            if (data.history && data.history.length > 0) {
+                data.history.forEach(log => {
+                    const row = `
+                        <tr class="border-b bg-white">
+                            <td class="py-2 px-3">${log.number}</td>
+                            <td class="py-2 px-3">
+                                <span class="px-1.5 py-0.5 rounded-full ${log.status === 'sent' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                                    ${log.status}
+                                </span>
+                            </td>
+                            <td class="py-2 px-3 text-gray-400">${new Date(log.timestamp).toLocaleString()}</td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += row;
+                });
+            } else {
+                tbody.innerHTML = '<tr><td colspan="3" class="py-4 text-center text-gray-400">Nenhuma mensagem enviada ainda.</td></tr>';
+            }
+        }
+
+        loadHistory();
+        setInterval(loadHistory, 10000); // Atualiza a cada 10 segundos
+
+        function copyKey() {
+            const key = document.getElementById('apiKey').innerText;
+            navigator.clipboard.writeText(key).then(() => alert('Chave copiada!'));
+        }
+
+        document.getElementById('logoutBtn').addEventListener('click', async () => {
+            if (confirm('Tem certeza que deseja desconectar seu WhatsApp?')) {
+                const res = await fetch(`/api/logout?key=${apiKey}`, { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    alert('WhatsApp desconectado com sucesso');
+                    location.reload();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
