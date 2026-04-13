@@ -9,7 +9,17 @@
 </head>
 <body class="bg-gray-100 min-h-screen">
     <nav class="bg-green-600 p-4 text-white flex justify-between items-center shadow-md">
-        <h1 class="text-xl font-bold">WhatsApp SaaS</h1>
+        <div class="flex items-center space-x-6">
+            <h1 class="text-xl font-bold">WhatsApp SaaS</h1>
+            <div class="flex items-center space-x-3 text-sm">
+                <a href="/dashboard?tab=whatsapp" class="hover:underline <%= tab === 'whatsapp' ? 'font-bold' : '' %>">WhatsApp</a>
+                <a href="/dashboard?tab=api" class="hover:underline <%= tab === 'api' ? 'font-bold' : '' %>">API</a>
+                <a href="/precos" class="hover:underline">Preços</a>
+                <% if (user.role === 'admin') { %>
+                    <a href="/admin" class="hover:underline">Admin</a>
+                <% } %>
+            </div>
+        </div>
         <div class="flex items-center space-x-4">
             <span>Olá, <%= user.name %></span>
             <a href="/auth/logout" class="bg-red-500 hover:bg-red-700 text-white py-1 px-4 rounded text-sm">Sair</a>
@@ -17,45 +27,39 @@
     </nav>
 
     <div class="max-w-4xl mx-auto mt-10 p-6 bg-white rounded-lg shadow-md">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <!-- Connection Status -->
-            <div class="border-r border-gray-200 pr-6">
-                <h2 class="text-xl font-semibold mb-4">Conexão WhatsApp</h2>
-                <div id="statusContainer" class="flex items-center space-x-2 mb-6">
-                    <span id="statusBadge" class="px-3 py-1 rounded-full text-xs font-bold uppercase <%= user.status === 'connected' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' %>">
-                        <%= sessionStatus === 'connected' ? 'Conectado' : (sessionStatus === 'qr_ready' ? 'Aguardando QR' : 'Desconectado') %>
-                    </span>
-                </div>
-
-                <div id="qrContainer" class="flex flex-col items-center justify-center p-4 bg-gray-50 rounded border border-dashed border-gray-300 min-h-[300px]">
-                    <p id="qrText" class="text-sm text-gray-500 mb-4 text-center">Escaneie o QR Code abaixo com seu WhatsApp para conectar.</p>
-                    <img id="qrImage" src="" alt="QR Code" class="w-64 h-64 <%= sessionStatus === 'qr_ready' ? '' : 'hidden' %>">
-                    <div id="connectedIcon" class="<%= sessionStatus === 'connected' ? '' : 'hidden' %> text-green-500 text-6xl">
-                        ✓
-                    </div>
-                </div>
-                <button id="logoutBtn" class="mt-4 w-full bg-red-100 hover:bg-red-200 text-red-700 py-2 rounded font-semibold text-sm">Desconectar WhatsApp</button>
-
-                <!-- Quick Test Form -->
-                <div class="mt-8 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                    <h3 class="text-sm font-bold text-gray-800 mb-3">Teste de Envio Rápido</h3>
-                    <div class="space-y-3">
-                        <input type="text" id="testNumber" placeholder="Número (ex: 5511999999999)" class="w-full p-2 text-xs border rounded">
-                        <textarea id="testMessage" placeholder="Mensagem de teste" class="w-full p-2 text-xs border rounded h-20"></textarea>
-                        <button id="sendTestBtn" class="w-full bg-green-500 hover:bg-green-600 text-white py-2 rounded text-xs font-bold transition">Enviar Mensagem</button>
-                    </div>
-                </div>
+        <% if (tab === 'whatsapp') { %>
+        <div>
+            <h2 class="text-xl font-semibold mb-4">Conexão WhatsApp</h2>
+            <div id="statusContainer" class="flex items-center space-x-2 mb-6">
+                <span id="statusBadge" class="px-3 py-1 rounded-full text-xs font-bold uppercase <%= sessionStatus === 'connected' ? 'bg-green-100 text-green-800' : (sessionStatus === 'qr_ready' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800') %>">
+                    <%= sessionStatus === 'connected' ? 'Conectado' : (sessionStatus === 'qr_ready' ? 'Aguardando QR' : 'Iniciando...') %>
+                </span>
             </div>
 
-            <!-- Account & API -->
-            <div>
-                <h2 class="text-xl font-semibold mb-4">Sua Conta & API</h2>
+            <div id="qrContainer" class="flex flex-col items-center justify-center p-4 bg-gray-50 rounded border border-dashed border-gray-300 min-h-[340px]">
+                <p id="qrText" class="text-sm text-gray-500 mb-4 text-center">Escaneie o QR Code abaixo com seu WhatsApp para conectar.</p>
+                <img id="qrImage" src="" alt="QR Code" class="w-64 h-64 <%= sessionStatus === 'qr_ready' ? '' : 'hidden' %>">
+                <div id="connectedIcon" class="<%= sessionStatus === 'connected' ? '' : 'hidden' %> text-green-500 text-6xl">
+                    ✓
+                </div>
+            </div>
+            <button id="logoutBtn" class="mt-4 w-full bg-red-100 hover:bg-red-200 text-red-700 py-2 rounded font-semibold text-sm <%= sessionStatus === 'connected' ? '' : 'hidden' %>">Desconectar WhatsApp</button>
+            <p class="text-[10px] text-gray-400 mt-3">Para enviar mensagens pela API, vá na aba "API".</p>
+        </div>
+        <% } else { %>
+        <div>
+            <h2 class="text-xl font-semibold mb-4">Sua Conta & API</h2>
+            <div id="statusContainer" class="flex items-center space-x-2 mb-6">
+                <span id="statusBadge" class="px-3 py-1 rounded-full text-xs font-bold uppercase <%= sessionStatus === 'connected' ? 'bg-green-100 text-green-800' : (sessionStatus === 'qr_ready' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800') %>">
+                    <%= sessionStatus === 'connected' ? 'WhatsApp Conectado' : (sessionStatus === 'qr_ready' ? 'WhatsApp Aguardando QR' : 'WhatsApp Iniciando...') %>
+                </span>
+            </div>
                 <div class="mb-6">
                     <p class="text-sm text-gray-600 mb-1">Plano Atual</p>
                     <div class="flex items-center justify-between">
                         <span class="text-lg font-bold text-green-600 uppercase"><%= user.plan %></span>
                         <% if(user.plan === 'free') { %>
-                            <a href="#" class="text-xs text-blue-600 hover:underline">Fazer Upgrade</a>
+                            <a href="/precos" class="text-xs text-blue-600 hover:underline">Ver Preços</a>
                         <% } %>
                     </div>
                 </div>
@@ -103,6 +107,17 @@ Body: {
                 <!-- Warning when not connected -->
                 <div id="apiWarning" class="p-4 bg-yellow-50 border border-yellow-200 rounded mb-6 <%= sessionStatus === 'connected' ? 'hidden' : '' %>">
                     <p class="text-xs text-yellow-800">⚠️ Conecte seu WhatsApp para ativar as funcionalidades da API e visualizar sua chave de acesso.</p>
+                    <p class="text-[10px] text-yellow-700 mt-1">Vá na aba "WhatsApp" e escaneie o QR Code.</p>
+                </div>
+
+                <!-- Quick Test Form -->
+                <div class="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <h3 class="text-sm font-bold text-gray-800 mb-3">Teste de Envio Rápido</h3>
+                    <div class="space-y-3">
+                        <input type="text" id="testNumber" placeholder="Número (ex: 5511999999999)" class="w-full p-2 text-xs border rounded">
+                        <textarea id="testMessage" placeholder="Mensagem de teste" class="w-full p-2 text-xs border rounded h-20"></textarea>
+                        <button id="sendTestBtn" class="w-full bg-green-500 hover:bg-green-600 text-white py-2 rounded text-xs font-bold transition">Enviar Mensagem</button>
+                    </div>
                 </div>
 
                 <!-- Message History -->
@@ -123,8 +138,8 @@ Body: {
                         </table>
                     </div>
                 </div>
-            </div>
         </div>
+        <% } %>
     </div>
 
     <script>
@@ -138,6 +153,7 @@ Body: {
         const qrImage = document.getElementById('qrImage');
         const qrText = document.getElementById('qrText');
         const connectedIcon = document.getElementById('connectedIcon');
+        const logoutBtn = document.getElementById('logoutBtn');
         const apiInfoContainer = document.getElementById('apiInfoContainer');
         const apiWarning = document.getElementById('apiWarning');
 
@@ -147,6 +163,7 @@ Body: {
         });
 
         socket.on('qr', (qr) => {
+            if (!qrImage || !qrText || !connectedIcon) return;
             qrImage.src = qr;
             qrImage.classList.remove('hidden');
             qrText.classList.remove('hidden');
@@ -157,32 +174,37 @@ Body: {
             if (status === 'connected') {
                 statusBadge.innerText = 'Conectado';
                 statusBadge.className = 'px-3 py-1 rounded-full text-xs font-bold uppercase bg-green-100 text-green-800';
-                qrImage.classList.add('hidden');
-                qrText.classList.add('hidden');
-                connectedIcon.classList.remove('hidden');
+                if (qrImage) qrImage.classList.add('hidden');
+                if (qrText) qrText.classList.add('hidden');
+                if (connectedIcon) connectedIcon.classList.remove('hidden');
+                if (logoutBtn) logoutBtn.classList.remove('hidden');
                 
                 // Show API info when connected
-                apiInfoContainer.classList.remove('hidden');
-                apiWarning.classList.add('hidden');
+                if (apiInfoContainer) apiInfoContainer.classList.remove('hidden');
+                if (apiWarning) apiWarning.classList.add('hidden');
             } else if (status === 'qr_ready') {
                 statusBadge.innerText = 'Aguardando QR';
                 statusBadge.className = 'px-3 py-1 rounded-full text-xs font-bold uppercase bg-yellow-100 text-yellow-800';
-                qrText.innerText = 'Escaneie o QR Code abaixo com seu WhatsApp para conectar.';
+                if (qrText) qrText.innerText = 'Escaneie o QR Code abaixo com seu WhatsApp para conectar.';
+                if (logoutBtn) logoutBtn.classList.add('hidden');
                 
                 // Hide API info when not connected
-                apiInfoContainer.classList.add('hidden');
-                apiWarning.classList.remove('hidden');
+                if (apiInfoContainer) apiInfoContainer.classList.add('hidden');
+                if (apiWarning) apiWarning.classList.remove('hidden');
             } else {
                 statusBadge.innerText = 'Iniciando...';
                 statusBadge.className = 'px-3 py-1 rounded-full text-xs font-bold uppercase bg-blue-100 text-blue-800';
-                qrImage.classList.add('hidden');
-                qrText.classList.remove('hidden');
-                qrText.innerText = 'Gerando novo QR Code... Aguarde alguns segundos.';
-                connectedIcon.classList.add('hidden');
+                if (qrImage) qrImage.classList.add('hidden');
+                if (qrText) {
+                    qrText.classList.remove('hidden');
+                    qrText.innerText = 'Gerando novo QR Code... Aguarde alguns segundos.';
+                }
+                if (connectedIcon) connectedIcon.classList.add('hidden');
+                if (logoutBtn) logoutBtn.classList.add('hidden');
 
                 // Hide API info when not connected
-                apiInfoContainer.classList.add('hidden');
-                apiWarning.classList.remove('hidden');
+                if (apiInfoContainer) apiInfoContainer.classList.add('hidden');
+                if (apiWarning) apiWarning.classList.remove('hidden');
             }
         }
 
@@ -212,13 +234,16 @@ Body: {
             }
         }
 
-        loadHistory();
-        setInterval(loadHistory, 10000); // Atualiza a cada 10 segundos
+        if (document.getElementById('historyBody')) {
+            loadHistory();
+            setInterval(loadHistory, 10000); // Atualiza a cada 10 segundos
+        }
 
-        document.getElementById('sendTestBtn').addEventListener('click', async () => {
+        const sendTestBtn = document.getElementById('sendTestBtn');
+        if (sendTestBtn) sendTestBtn.addEventListener('click', async () => {
             const number = document.getElementById('testNumber').value;
             const message = document.getElementById('testMessage').value;
-            const btn = document.getElementById('sendTestBtn');
+            const btn = sendTestBtn;
 
             if (!number || !message) return alert('Preencha número e mensagem');
 
@@ -247,7 +272,9 @@ Body: {
         });
 
         function copyKey() {
-            const key = document.getElementById('apiKey').innerText;
+            const el = document.getElementById('apiKey');
+            if (!el) return;
+            const key = el.innerText;
             navigator.clipboard.writeText(key).then(() => alert('Chave copiada!'));
         }
 
@@ -256,13 +283,14 @@ Body: {
                 const res = await fetch('/api/regenerate-key', { method: 'POST' });
                 const data = await res.json();
                 if (data.success) {
-                    document.getElementById('apiKey').innerText = data.apiKey;
+                    const el = document.getElementById('apiKey');
+                    if (el) el.innerText = data.apiKey;
                     alert('Nova chave gerada com sucesso!');
                 }
             }
         }
 
-        document.getElementById('logoutBtn').addEventListener('click', async () => {
+        if (logoutBtn) logoutBtn.addEventListener('click', async () => {
             if (confirm('Tem certeza que deseja desconectar seu WhatsApp?')) {
                 const res = await fetch(`/api/logout?key=${apiKey}`, { method: 'POST' });
                 const data = await res.json();

@@ -77,7 +77,8 @@ app.get('/dashboard', authMiddleware, async (req, res) => {
     const user = req.user;
     const session = await whatsAppManager.getSession(user._id.toString());
     const baseUrl = `${req.protocol}://${req.get('host')}`;
-    res.render('dashboard', { user, sessionStatus: session.status, baseUrl });
+    const tab = req.query.tab === 'api' ? 'api' : 'whatsapp';
+    res.render('dashboard', { user, sessionStatus: session.status, baseUrl, tab });
 });
 
 // Admin Panel
@@ -126,6 +127,7 @@ app.post('/api/regenerate-key', authMiddleware, async (req, res) => {
 app.get('/login', (req, res) => res.render('login'));
 app.get('/register', (req, res) => res.render('register'));
 app.get('/', (req, res) => res.redirect('/dashboard')); // Redireciona para o dashboard protegido
+app.get('/precos', (req, res) => res.render('landing'));
 
 // Socket.io for QR updates
 io.on('connection', (socket) => {
