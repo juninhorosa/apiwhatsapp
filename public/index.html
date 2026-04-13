@@ -105,10 +105,15 @@
                 qrContainer.innerHTML = '<h3>✅ Conectado com sucesso!</h3>';
                 instructions.style.display = 'none';
                 logoutBtn.style.display = 'inline-block';
-            } else if (status === 'disconnected') {
-                qrContainer.innerHTML = '<p id="loading-msg">Aguardando conexão...</p>';
+                logoutBtn.textContent = 'Desconectar / Trocar Número';
+            } else if (status === 'qr_ready') {
                 instructions.style.display = 'block';
                 logoutBtn.style.display = 'none';
+            } else {
+                // Para estados como 'disconnected' ou erro, permite resetar
+                instructions.style.display = 'block';
+                logoutBtn.style.display = 'inline-block';
+                logoutBtn.textContent = 'Limpar Sessão / Novo QR Code';
             }
         });
 
