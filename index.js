@@ -127,9 +127,18 @@ app.get('/', (req, res) => res.redirect('/dashboard')); // Redireciona para o da
 
 // Socket.io for QR updates
 io.on('connection', (socket) => {
-    socket.on('join', (userId) => {
+    socket.on('join', async (userId) => {
         socket.join(userId);
         console.log(`User ${userId} joined their channel`);
+        
+        // Envia o status atual e QR assim que o usuário conectar ao socket
+        const session = await whatsAppManager.getSession(userId);
+        if (session) {
+            socket.emit('status', session.status);
+            if (session.qrCode) {
+                socket.emit('qr', session.qrCode);
+            }
+        }
     });
 });
 
