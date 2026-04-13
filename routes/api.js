@@ -20,6 +20,9 @@ router.post('/send-message', apiAuthMiddleware, trialMiddleware, async (req, res
         }
 
         let cleanNumber = number.replace(/\D/g, '');
+        if (!cleanNumber.startsWith('55') && (cleanNumber.length === 10 || cleanNumber.length === 11)) {
+            cleanNumber = `55${cleanNumber}`;
+        }
         const jid = cleanNumber.includes('@s.whatsapp.net') ? cleanNumber : `${cleanNumber}@s.whatsapp.net`;
 
         // Verifica se o número existe no WhatsApp

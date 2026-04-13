@@ -249,15 +249,18 @@ Body: {
                     headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
                     body: JSON.stringify({ number, message })
                 });
-                const data = await res.json();
+                const raw = await res.text();
+                let data = {};
+                try { data = JSON.parse(raw); } catch (e) { data = { error: raw }; }
                 if (data.success) {
                     alert('Mensagem enviada com sucesso!');
                     loadHistory();
                 } else {
-                    alert('Erro: ' + (data.error || 'Erro desconhecido'));
+                    const statusInfo = res.ok ? '' : ` (HTTP ${res.status})`;
+                    alert('Erro' + statusInfo + ': ' + (data.error || data.details || 'Erro desconhecido'));
                 }
             } catch (e) {
-                alert('Erro na conexão');
+                alert('Erro na conexão: ' + (e?.message || 'desconhecido'));
             } finally {
                 btn.disabled = false;
                 btn.innerText = 'Enviar Mensagem';
