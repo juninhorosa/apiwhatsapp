@@ -79,7 +79,16 @@
 
         <div class="api-info">
             <p><strong>Sua API Key:</strong> <span id="api-key-display" style="color: #25d366; font-weight: bold;">Carregando...</span></p>
-            <p><strong>Endpoint:</strong> /send-message</p>
+            
+            <div id="test-form" style="margin-top: 1rem; padding: 1rem; border: 1px solid #ddd; border-radius: 8px; background: #f9f9f9;">
+                <h4>Teste de Envio Rápido</h4>
+                <input type="text" id="test-number" placeholder="Número (ex: 351912345678)" style="width: 80%; padding: 8px; margin-bottom: 5px; border-radius: 4px; border: 1px solid #ccc;"><br>
+                <textarea id="test-message" placeholder="Mensagem de teste" style="width: 80%; padding: 8px; margin-bottom: 5px; border-radius: 4px; border: 1px solid #ccc;"></textarea><br>
+                <button id="send-test-btn" style="background: #25d366; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;">Enviar Teste</button>
+                <p id="test-result" style="font-size: 0.8rem; margin-top: 5px;"></p>
+            </div>
+
+            <p style="margin-top: 1rem;"><strong>Endpoint:</strong> /send-message</p>
             <p><strong>Método:</strong> POST</p>
             <p><strong>Header:</strong> x-api-key: SUA_CHAVE</p>
             <p><strong>Corpo:</strong> { "number": "5511999999999", "message": "Olá!" }</p>
@@ -125,6 +134,43 @@
             currentApiKey = key;
             apiKeyDisplay.textContent = key;
         });
+
+        // Lógica do botão de teste
+        const sendTestBtn = document.getElementById('send-test-btn');
+        const testNumber = document.getElementById('test-number');
+        const testMessage = document.getElementById('test-message');
+        const testResult = document.getElementById('test-result');
+
+        sendTestBtn.onclick = async () => {
+            testResult.textContent = 'Enviando...';
+            testResult.style.color = 'blue';
+            
+            try {
+                const response = await fetch('/send-message', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': currentApiKey
+                    },
+                    body: JSON.stringify({
+                        number: testNumber.value,
+                        message: testMessage.value
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    testResult.textContent = '✅ Enviado!';
+                    testResult.style.color = 'green';
+                } else {
+                    testResult.textContent = '❌ Erro: ' + (data.error || 'Falha desconhecida');
+                    testResult.style.color = 'red';
+                }
+            } catch (err) {
+                testResult.textContent = '❌ Erro de rede: ' + err.message;
+                testResult.style.color = 'red';
+            }
+        };
 
         logoutBtn.onclick = async () => {
             if (confirm('Tem certeza que deseja desconectar este WhatsApp?')) {
