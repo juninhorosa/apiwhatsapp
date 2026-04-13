@@ -136,7 +136,7 @@ Body: {
     <script>
         const socket = io();
         const userId = "<%= user._id %>";
-        const apiKey = "<%= user.apiKey %>";
+        let apiKey = "<%= user.apiKey %>";
 
         socket.emit('join', userId);
 
@@ -200,7 +200,9 @@ Body: {
         }
 
         async function loadHistory() {
-            const res = await fetch(`/api/history?key=${apiKey}`);
+            const res = await fetch('/api/history', {
+                headers: { 'x-api-key': apiKey }
+            });
             const data = await res.json();
             const tbody = document.getElementById('historyBody');
             tbody.innerHTML = '';
@@ -242,9 +244,9 @@ Body: {
             btn.innerText = 'Enviando...';
 
             try {
-                const res = await fetch(`/api/send-message?key=${apiKey}`, {
+                const res = await fetch('/api/send-message', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
                     body: JSON.stringify({ number, message })
                 });
                 const data = await res.json();
@@ -276,6 +278,7 @@ Body: {
                 if (data.success) {
                     const el = document.getElementById('apiKey');
                     if (el) el.innerText = data.apiKey;
+                    apiKey = data.apiKey;
                     alert('Nova chave gerada com sucesso!');
                 }
             }
@@ -283,7 +286,10 @@ Body: {
 
         if (logoutBtn) logoutBtn.addEventListener('click', async () => {
             if (confirm('Tem certeza que deseja desconectar seu WhatsApp?')) {
-                const res = await fetch(`/api/logout?key=${apiKey}`, { method: 'POST' });
+                const res = await fetch('/api/logout', {
+                    method: 'POST',
+                    headers: { 'x-api-key': apiKey }
+                });
                 const data = await res.json();
                 if (data.success) {
                     alert('WhatsApp desconectado com sucesso');
