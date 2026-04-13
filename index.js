@@ -16,6 +16,7 @@ const { authMiddleware, adminMiddleware } = require('./middleware/auth');
 dotenv.config();
 
 const app = express();
+app.set('trust proxy', true);
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: { origin: '*' }
@@ -75,7 +76,8 @@ app.use('/api', apiRoutes);
 app.get('/dashboard', authMiddleware, async (req, res) => {
     const user = req.user;
     const session = await whatsAppManager.getSession(user._id.toString());
-    res.render('dashboard', { user, sessionStatus: session.status });
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    res.render('dashboard', { user, sessionStatus: session.status, baseUrl });
 });
 
 // Admin Panel
