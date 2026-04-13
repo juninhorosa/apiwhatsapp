@@ -71,6 +71,8 @@
             <p id="loading-msg">Aguardando QR Code...</p>
         </div>
 
+        <button id="logout-btn" style="display: none; background: #ef4444; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; margin-bottom: 1rem;">Desconectar WhatsApp</button>
+
         <div class="instructions" id="instructions">
             Abra o WhatsApp no seu celular, vá em Configurações > Aparelhos Conectados e escaneie o código acima.
         </div>
@@ -91,6 +93,9 @@
         const loadingMsg = document.getElementById('loading-msg');
         const instructions = document.getElementById('instructions');
         const apiKeyDisplay = document.getElementById('api-key-display');
+        const logoutBtn = document.getElementById('logout-btn');
+
+        let currentApiKey = '';
 
         socket.on('status', (status) => {
             statusEl.textContent = getStatusLabel(status);
@@ -99,9 +104,11 @@
             if (status === 'connected') {
                 qrContainer.innerHTML = '<h3>✅ Conectado com sucesso!</h3>';
                 instructions.style.display = 'none';
+                logoutBtn.style.display = 'inline-block';
             } else if (status === 'disconnected') {
                 qrContainer.innerHTML = '<p id="loading-msg">Aguardando conexão...</p>';
                 instructions.style.display = 'block';
+                logoutBtn.style.display = 'none';
             }
         });
 
@@ -110,8 +117,33 @@
         });
 
         socket.on('api_key', (key) => {
+            currentApiKey = key;
             apiKeyDisplay.textContent = key;
         });
+
+        logoutBtn.onclick = async () => {
+            if (confirm('Tem certeza que deseja desconectar este WhatsApp?')) {
+                logoutBtn.disabled = true;
+                logoutBtn.textContent = 'Desconectando...';
+                
+                try {
+                    const response = await fetch('/logout', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'x-api-key': currentApiKey
+                        }
+                    });
+                    
+                    if (!response.ok) throw new Error('Erro ao desconectar');
+                    
+                } catch (err) {
+                    alert(err.message);
+                    logoutBtn.disabled = false;
+                    logoutBtn.textContent = 'Desconectar WhatsApp';
+                }
+            }
+        };
 
         function getStatusLabel(status) {
             switch(status) {

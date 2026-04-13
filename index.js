@@ -138,6 +138,37 @@ app.get('/status', authMiddleware, (req, res) => {
     res.json({ status: connectionStatus });
 });
 
+app.post('/logout', authMiddleware, async (req, res) => {
+    try {
+        if (sock) {
+            await sock.logout();
+            sock.end();
+        }
+        
+        // Remove a pasta de autenticação
+        const authPath = path.join(__dirname, 'auth_info_baileys');
+        if (fs.existsSync(authPath)) {
+            fs.rmSync(authPath, { recursive: true, force: true });
+        }
+        
+        connectionStatus = 'disconnected';
+        qrCodeData = null;
+        
+        io.emit('status', connectionStatus);
+        
+        res.json({ success: true, message: 'Desconectado com sucesso' });
+        
+        // Reinicia o processo de conexão para gerar novo QR Code
+        setTimeout(() => {
+            connectToWhatsApp();
+        }, 3000);
+        
+    } catch (err) {
+        console.error('Erro ao desconectar:', err);
+        res.status(500).json({ error: 'Erro ao desconectar', details: err.message });
+    }
+});
+
 app.post('/send-message', authMiddleware, async (req, res) => {
     let { number, message } = req.body;
     
