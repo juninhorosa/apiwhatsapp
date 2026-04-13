@@ -36,10 +36,36 @@ class WhatsAppManager {
     async getSession(userId) {
         // Se a sessão já estiver na memória, renovamos o timeout de inatividade e retornamos
         if (this.sessions.has(userId)) {
+            const session = this.sessions.get(userId);
+            // Se estava desconectada (mas temos a pasta de auth), pode estar no processo de conectar
+            if (session.status === 'disconnected') {
+                // Tenta reconectar ou aguarda
+                return await this.waitForConnection(userId, session);
+            }
             this.resetIdleTimeout(userId);
-            return this.sessions.get(userId);
+            return session;
         }
-        return await this.initializeSession(userId);
+        
+        const session = await this.initializeSession(userId);
+        return await this.waitForConnection(userId, session);
+    }
+
+    async waitForConnection(userId, session, timeoutMs = 15000) {
+        if (session.status === 'connected') return session;
+        
+        return new Promise((resolve) => {
+            const timeout = setTimeout(() => {
+                resolve(session); // Retorna a sessão mesmo que não conecte no tempo limite
+            }, timeoutMs);
+
+            const checkStatus = setInterval(() => {
+                if (session.status === 'connected' || session.status === 'qr_ready') {
+                    clearInterval(checkStatus);
+                    clearTimeout(timeout);
+                    resolve(session);
+                }
+            }, 500);
+        });
     }
 
     async initializeSession(userId) {

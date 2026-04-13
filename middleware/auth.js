@@ -10,6 +10,13 @@ const authMiddleware = async (req, res, next) => {
         const user = await User.findById(decoded.id);
         if (!user || user.status !== 'active') return res.redirect('/login');
 
+        // Garante que o usuário tem apiKey (migração de usuários antigos)
+        if (!user.apiKey) {
+            const crypto = require('crypto');
+            user.apiKey = crypto.randomBytes(24).toString('hex');
+            await user.save();
+        }
+
         req.user = user;
         next();
     } catch (err) {

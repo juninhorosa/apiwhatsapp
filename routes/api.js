@@ -22,7 +22,15 @@ router.post('/send-message', apiAuthMiddleware, trialMiddleware, async (req, res
         let cleanNumber = number.replace(/\D/g, '');
         const jid = cleanNumber.includes('@s.whatsapp.net') ? cleanNumber : `${cleanNumber}@s.whatsapp.net`;
 
-        await session.sock.sendMessage(jid, { text: message });
+        // Verifica se o número existe no WhatsApp
+        const [result] = await session.sock.onWhatsApp(jid);
+        if (!result || !result.exists) {
+            return res.status(400).json({ error: 'Número não registrado no WhatsApp' });
+        }
+
+        // Envia usando o JID real retornado pelo WhatsApp
+        const realJid = result.jid;
+        await session.sock.sendMessage(realJid, { text: message });
 
         // Increment trial counter
         user.messagesSentToday += 1;
