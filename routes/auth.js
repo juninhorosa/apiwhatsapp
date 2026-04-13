@@ -6,8 +6,13 @@ const jwt = require('jsonwebtoken');
 router.post('/register', async (req, res) => {
     try {
         const { name, email, password } = req.body;
+        console.log('Tentativa de registro para:', email);
+        
         const existingUser = await User.findOne({ email });
-        if (existingUser) return res.status(400).json({ error: 'Email já cadastrado' });
+        if (existingUser) {
+            console.log('Erro: Email já existe');
+            return res.status(400).json({ error: 'Email já cadastrado' });
+        }
 
         // Make the first user an admin
         const userCount = await User.countDocuments();
@@ -16,9 +21,11 @@ router.post('/register', async (req, res) => {
         const user = new User({ name, email, password, role });
         await user.save();
 
+        console.log('Usuário cadastrado com sucesso:', email, 'Role:', role);
         res.status(201).json({ success: true, message: 'Usuário cadastrado com sucesso' });
     } catch (err) {
-        res.status(500).json({ error: 'Erro ao cadastrar usuário' });
+        console.error('Erro detalhado no registro:', err);
+        res.status(500).json({ error: 'Erro ao cadastrar usuário: ' + err.message });
     }
 });
 
