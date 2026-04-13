@@ -22,6 +22,14 @@ const io = new Server(server);
 const PORT = process.env.PORT || 3000;
 const logger = P({ level: 'info' });
 
+app.use(express.json());
+
+// Middleware para logar todas as requisições (ajuda no diagnóstico)
+app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    next();
+});
+
 // Função para obter ou gerar uma API Key persistente
 function getApiKey() {
     const keyPath = path.join(__dirname, 'auth_info_baileys', 'api_key.txt');
