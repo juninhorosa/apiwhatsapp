@@ -38,7 +38,16 @@ router.post('/login', async (req, res) => {
         }
 
         const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
-        res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production' });
+        
+        // Configuração do cookie compatível com HTTP (IP Direto) e HTTPS
+        res.cookie('token', token, { 
+            httpOnly: true, 
+            secure: false, // Forçado para false para funcionar via IP direto (HTTP)
+            sameSite: 'lax',
+            maxAge: 24 * 60 * 60 * 1000 // 1 dia
+        });
+
+        console.log('Login realizado com sucesso para:', email);
         res.json({ success: true, role: user.role });
     } catch (err) {
         res.status(500).json({ error: 'Erro ao fazer login' });
