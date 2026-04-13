@@ -81,10 +81,10 @@
                     <div class="p-4 bg-blue-50 border border-blue-200 rounded mb-6">
                         <h3 class="text-sm font-bold text-blue-800 mb-2">Como usar a API:</h3>
                         <div class="text-[10px] text-gray-600 mb-2">
-                            <span class="font-bold">Link da API:</span>
-                            <span id="apiBaseUrl"><%= baseUrl %></span>
+                            <span class="font-bold">Link da API (externo/Cloudflare):</span>
+                            <span id="apiBaseUrl"><%= publicBaseUrl %></span>
                         </div>
-                        <pre class="text-[10px] bg-white p-2 border rounded overflow-x-auto text-gray-600">POST <%= baseUrl %>/api/send-message
+                        <pre class="text-[10px] bg-white p-2 border rounded overflow-x-auto text-gray-600">POST <%= publicBaseUrl %>/api/send-message
 Headers: {
   'Content-Type': 'application/json',
   'x-api-key': '<%= user.apiKey %>'

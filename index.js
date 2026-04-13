@@ -29,7 +29,13 @@ const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/whatsapp-s
 app.use(helmet({
     contentSecurityPolicy: false, // Disabilitado para facilitar o uso de recursos externos no painel
 }));
-app.use(cors());
+const corsOptions = {
+    origin: true,
+    methods: ['GET', 'POST', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'x-api-key', 'Authorization'],
+};
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -77,7 +83,8 @@ app.get('/dashboard', authMiddleware, async (req, res) => {
     const user = req.user;
     const session = await whatsAppManager.getSession(user._id.toString());
     const baseUrl = `${req.protocol}://${req.get('host')}`;
-    res.render('dashboard', { user, sessionStatus: session.status, baseUrl });
+    const publicBaseUrl = process.env.PUBLIC_BASE_URL || baseUrl;
+    res.render('dashboard', { user, sessionStatus: session.status, baseUrl, publicBaseUrl });
 });
 
 // Admin Panel
