@@ -81,8 +81,21 @@ app.get('/dashboard', authMiddleware, async (req, res) => {
 // Admin Panel
 app.get('/admin', authMiddleware, adminMiddleware, async (req, res) => {
     const User = require('./models/User');
+    const MessageLog = require('./models/MessageLog');
+    
     const users = await User.find();
-    res.render('admin', { users });
+    const totalMessages = await MessageLog.countDocuments({ status: 'sent' });
+    const totalUsers = await User.countDocuments();
+    const premiumUsers = await User.countDocuments({ plan: 'premium' });
+    
+    res.render('admin', { 
+        users, 
+        stats: {
+            totalMessages,
+            totalUsers,
+            premiumUsers
+        }
+    });
 });
 
 app.patch('/admin/users/:id', authMiddleware, adminMiddleware, async (req, res) => {

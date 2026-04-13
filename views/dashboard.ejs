@@ -35,6 +35,16 @@
                     </div>
                 </div>
                 <button id="logoutBtn" class="mt-4 w-full bg-red-100 hover:bg-red-200 text-red-700 py-2 rounded font-semibold text-sm">Desconectar WhatsApp</button>
+
+                <!-- Quick Test Form -->
+                <div class="mt-8 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <h3 class="text-sm font-bold text-gray-800 mb-3">Teste de Envio Rápido</h3>
+                    <div class="space-y-3">
+                        <input type="text" id="testNumber" placeholder="Número (ex: 5511999999999)" class="w-full p-2 text-xs border rounded">
+                        <textarea id="testMessage" placeholder="Mensagem de teste" class="w-full p-2 text-xs border rounded h-20"></textarea>
+                        <button id="sendTestBtn" class="w-full bg-green-500 hover:bg-green-600 text-white py-2 rounded text-xs font-bold transition">Enviar Mensagem</button>
+                    </div>
+                </div>
             </div>
 
             <!-- Account & API -->
@@ -175,6 +185,37 @@ Body: {
 
         loadHistory();
         setInterval(loadHistory, 10000); // Atualiza a cada 10 segundos
+
+        document.getElementById('sendTestBtn').addEventListener('click', async () => {
+            const number = document.getElementById('testNumber').value;
+            const message = document.getElementById('testMessage').value;
+            const btn = document.getElementById('sendTestBtn');
+
+            if (!number || !message) return alert('Preencha número e mensagem');
+
+            btn.disabled = true;
+            btn.innerText = 'Enviando...';
+
+            try {
+                const res = await fetch(`/api/send-message?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ number, message })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('Mensagem enviada com sucesso!');
+                    loadHistory();
+                } else {
+                    alert('Erro: ' + (data.error || 'Erro desconhecido'));
+                }
+            } catch (e) {
+                alert('Erro na conexão');
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'Enviar Mensagem';
+            }
+        });
 
         function copyKey() {
             const key = document.getElementById('apiKey').innerText;
