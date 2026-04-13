@@ -3,6 +3,7 @@ const {
     useMultiFileAuthState,
     DisconnectReason,
     fetchLatestBaileysVersion,
+    Browsers
 } = require('@whiskeysockets/baileys');
 const { Boom } = require('@hapi/boom');
 const P = require('pino');
@@ -10,12 +11,26 @@ const qrcode = require('qrcode');
 const path = require('path');
 const fs = require('fs');
 
+// Cache da versão do Baileys para acelerar o boot
+let cachedVersion = null;
+
 class WhatsAppManager {
     constructor(io) {
         this.io = io;
         this.sessions = new Map();
-        this.logger = P({ level: 'silent' });
+        this.logger = P({ level: 'error' }); // Apenas logs de erro para não pesar
         this.timeouts = new Map();
+    }
+
+    async getBaileysVersion() {
+        if (cachedVersion) return cachedVersion;
+        try {
+            const { version } = await fetchLatestBaileysVersion();
+            cachedVersion = version;
+            return version;
+        } catch (e) {
+            return [2, 3000, 1015901307]; // Fallback para uma versão estável
+        }
     }
 
     async getSession(userId) {
@@ -34,16 +49,23 @@ class WhatsAppManager {
         }
 
         const { state, saveCreds } = await useMultiFileAuthState(authPath);
-        const { version } = await fetchLatestBaileysVersion();
+        const version = await this.getBaileysVersion();
 
         const sock = makeWASocket({
             version,
             auth: state,
             logger: this.logger,
             printQRInTerminal: false,
-            // Otimizações de performance
-            browser: ['SaaS WhatsApp', 'Chrome', '1.0.0'],
-            syncFullHistory: false, // Não sincroniza todo o histórico para poupar RAM
+            // Otimizações de performance e velocidade
+            browser: Browsers.ubuntu('Chrome'), // Identificação mais rápida
+            connectTimeoutMs: 60000,
+            defaultQueryTimeoutMs: 0,
+            keepAliveIntervalMs: 10000,
+            emitOwnEvents: true,
+            retryRequestDelayMs: 250,
+            maxMsgRetryCount: 5,
+            syncFullHistory: false, // Poupa RAM e tempo de boot
+            markOnlineOnConnect: true,
         });
 
         const session = {
