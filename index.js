@@ -77,8 +77,7 @@ app.get('/dashboard', authMiddleware, async (req, res) => {
     const user = req.user;
     const session = await whatsAppManager.getSession(user._id.toString());
     const baseUrl = `${req.protocol}://${req.get('host')}`;
-    const tab = req.query.tab === 'api' ? 'api' : 'whatsapp';
-    res.render('dashboard', { user, sessionStatus: session.status, baseUrl, tab });
+    res.render('dashboard', { user, sessionStatus: session.status, baseUrl });
 });
 
 // Admin Panel

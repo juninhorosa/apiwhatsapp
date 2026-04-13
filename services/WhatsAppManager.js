@@ -20,6 +20,7 @@ class WhatsAppManager {
         this.sessions = new Map();
         this.logger = P({ level: 'error' }); // Apenas logs de erro para não pesar
         this.timeouts = new Map();
+        this.sessionsBaseDir = process.env.SESSIONS_DIR || (fs.existsSync('/sessions') ? '/sessions' : path.join(__dirname, '..', 'sessions'));
     }
 
     async getBaileysVersion() {
@@ -69,7 +70,7 @@ class WhatsAppManager {
     }
 
     async initializeSession(userId) {
-        const authPath = path.join(__dirname, '..', 'sessions', userId);
+        const authPath = path.join(this.sessionsBaseDir, userId);
         if (!fs.existsSync(authPath)) {
             fs.mkdirSync(authPath, { recursive: true });
         }
@@ -179,7 +180,7 @@ class WhatsAppManager {
             this.sessions.delete(userId);
             this.timeouts.delete(userId);
         }
-        const authPath = path.join(__dirname, '..', 'sessions', userId);
+        const authPath = path.join(this.sessionsBaseDir, userId);
         if (fs.existsSync(authPath)) {
             fs.rmSync(authPath, { recursive: true, force: true });
         }
