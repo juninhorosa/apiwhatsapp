@@ -91,12 +91,18 @@ async function connectToWhatsApp() {
         }
 
         if (connection === 'close') {
-            const shouldReconnect = (lastDisconnect.error instanceof Boom) ? lastDisconnect.error.output.statusCode !== DisconnectReason.loggedOut : true;
-            console.log('connection closed due to ', lastDisconnect.error, ', reconnecting ', shouldReconnect);
+            const statusCode = (lastDisconnect.error instanceof Boom) ? lastDisconnect.error.output.statusCode : 0;
+            const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+            
+            console.log(`Conexão encerrada. Código: ${statusCode}. Motivo:`, lastDisconnect.error);
+            console.log('Tentando reconectar:', shouldReconnect);
+            
             connectionStatus = 'disconnected';
             io.emit('status', connectionStatus);
+
             if (shouldReconnect) {
-                connectToWhatsApp();
+                // Pequeno delay antes de tentar reconectar para evitar loop infinito
+                setTimeout(() => connectToWhatsApp(), 5000);
             }
         } else if (connection === 'open') {
             console.log('opened connection');
