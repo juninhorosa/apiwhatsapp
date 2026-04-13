@@ -108,6 +108,18 @@ app.patch('/admin/users/:id', authMiddleware, adminMiddleware, async (req, res) 
     }
 });
 
+app.post('/api/regenerate-key', authMiddleware, async (req, res) => {
+    const User = require('./models/User');
+    const crypto = require('crypto');
+    try {
+        const newKey = crypto.randomBytes(24).toString('hex');
+        await User.findByIdAndUpdate(req.user._id, { apiKey: newKey });
+        res.json({ success: true, apiKey: newKey });
+    } catch (err) {
+        res.status(500).json({ error: 'Erro ao gerar nova chave' });
+    }
+});
+
 // Public pages
 app.get('/login', (req, res) => res.render('login'));
 app.get('/register', (req, res) => res.render('register'));
