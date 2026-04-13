@@ -35,7 +35,7 @@ const corsOptions = {
     allowedHeaders: ['Content-Type', 'x-api-key', 'Authorization'],
 };
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
+app.options(/.*/, cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -83,8 +83,9 @@ app.get('/dashboard', authMiddleware, async (req, res) => {
     const user = req.user;
     const session = await whatsAppManager.getSession(user._id.toString());
     const baseUrl = `${req.protocol}://${req.get('host')}`;
-    const publicBaseUrl = process.env.PUBLIC_BASE_URL || baseUrl;
-    res.render('dashboard', { user, sessionStatus: session.status, baseUrl, publicBaseUrl });
+    const publicBaseUrl = (process.env.PUBLIC_BASE_URL || baseUrl).replace(/\/$/, '');
+    const publicSendMessageUrl = `${publicBaseUrl}/api/send-message`;
+    res.render('dashboard', { user, sessionStatus: session.status, baseUrl, publicBaseUrl, publicSendMessageUrl });
 });
 
 // Admin Panel
