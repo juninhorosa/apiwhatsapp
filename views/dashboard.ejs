@@ -84,6 +84,7 @@
                             <span class="font-bold">Endpoint (Cloudflare):</span>
                             <span id="apiBaseUrl"><%= publicSendMessageUrl %></span>
                         </div>
+                        <p class="text-[10px] text-gray-500 mb-2">Dica: para integrar em sites HTTPS, use um endpoint HTTPS (Cloudflare). Se você abrir o painel pelo IP, o endpoint pode aparecer como IP (HTTP).</p>
                         <pre class="text-[10px] bg-white p-2 border rounded overflow-x-auto text-gray-600">POST <%= publicSendMessageUrl %>
 Headers: {
   'Content-Type': 'application/json',

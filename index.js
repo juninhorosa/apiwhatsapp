@@ -82,8 +82,13 @@ app.use('/api', apiRoutes);
 app.get('/dashboard', authMiddleware, async (req, res) => {
     const user = req.user;
     const session = await whatsAppManager.getSession(user._id.toString());
+    const forwardedProto = (req.get('x-forwarded-proto') || '').split(',')[0].trim();
+    const forwardedHost = (req.get('x-forwarded-host') || '').split(',')[0].trim();
+    const effectiveProto = forwardedProto || req.protocol;
+    const effectiveHost = forwardedHost || req.get('host');
+    const detectedBaseUrl = `${effectiveProto}://${effectiveHost}`;
     const baseUrl = `${req.protocol}://${req.get('host')}`;
-    const publicBaseUrl = (process.env.PUBLIC_BASE_URL || baseUrl).replace(/\/$/, '');
+    const publicBaseUrl = (process.env.PUBLIC_BASE_URL || detectedBaseUrl).replace(/\/$/, '');
     const publicSendMessageUrl = `${publicBaseUrl}/api/send-message`;
     res.render('dashboard', { user, sessionStatus: session.status, baseUrl, publicBaseUrl, publicSendMessageUrl });
 });
