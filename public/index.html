@@ -140,12 +140,15 @@
                         }
                     });
                     
-                    if (!response.ok) throw new Error('Erro ao desconectar');
+                    // Mesmo se a resposta não for OK, vamos resetar a interface
+                    logoutBtn.textContent = 'Limpando...';
+                    setTimeout(() => {
+                        location.reload(); // Recarrega a página para garantir estado limpo
+                    }, 2000);
                     
                 } catch (err) {
-                    alert(err.message);
-                    logoutBtn.disabled = false;
-                    logoutBtn.textContent = 'Desconectar WhatsApp';
+                    // No erro, recarregamos também
+                    location.reload();
                 }
             }
         };

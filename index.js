@@ -145,33 +145,42 @@ app.get('/status', authMiddleware, (req, res) => {
 });
 
 app.post('/logout', authMiddleware, async (req, res) => {
+    console.log('Solicitação de logout recebida...');
     try {
+        // Tenta fazer o logout formal, mas não trava se der erro
         if (sock) {
-            await sock.logout();
-            sock.end();
+            try {
+                await sock.logout();
+                sock.end();
+            } catch (e) {
+                console.log('Erro ao encerrar socket (provavelmente já desconectado)');
+            }
         }
         
-        // Remove a pasta de autenticação
+        // FORÇA a remoção da pasta de autenticação
         const authPath = path.join(__dirname, 'auth_info_baileys');
         if (fs.existsSync(authPath)) {
+            console.log('Removendo pasta de autenticação...');
             fs.rmSync(authPath, { recursive: true, force: true });
         }
         
         connectionStatus = 'disconnected';
         qrCodeData = null;
-        
         io.emit('status', connectionStatus);
         
-        res.json({ success: true, message: 'Desconectado com sucesso' });
+        res.json({ success: true, message: 'Sessão limpa com sucesso' });
         
-        // Reinicia o processo de conexão para gerar novo QR Code
+        // Reinicia o processo de conexão do zero
+        console.log('Reiniciando conexão em 2 segundos...');
         setTimeout(() => {
             connectToWhatsApp();
-        }, 3000);
+        }, 2000);
         
     } catch (err) {
-        console.error('Erro ao desconectar:', err);
-        res.status(500).json({ error: 'Erro ao desconectar', details: err.message });
+        console.error('Erro crítico no logout:', err);
+        // Mesmo com erro, tentamos avisar o frontend para resetar
+        res.json({ success: true, message: 'Reset forçado executado' });
+        setTimeout(() => connectToWhatsApp(), 2000);
     }
 });
 
