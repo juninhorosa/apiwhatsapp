@@ -8,6 +8,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const cookieParser = require('cookie-parser');
+const jwt = require('jsonwebtoken');
 const dotenv = require('dotenv');
 const WhatsAppManager = require('./services/WhatsAppManager');
 const authRoutes = require('./routes/auth');
@@ -293,7 +294,16 @@ app.post('/api/regenerate-key', authMiddleware, async (req, res) => {
 // Public pages
 app.get('/login', (req, res) => res.render('login'));
 app.get('/register', (req, res) => res.render('register'));
-app.get('/', (req, res) => res.redirect('/dashboard')); // Redireciona para o dashboard protegido
+app.get('/', (req, res) => {
+    const token = req.cookies?.token;
+    if (token) {
+        try {
+            jwt.verify(token, process.env.JWT_SECRET);
+            return res.redirect('/dashboard');
+        } catch (e) {}
+    }
+    res.render('landing');
+});
 app.get('/precos', (req, res) => res.render('landing'));
 
 // Socket.io for QR updates
