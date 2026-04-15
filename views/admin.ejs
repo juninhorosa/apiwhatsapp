@@ -32,6 +32,72 @@
             </div>
         </div>
 
+        <div class="bg-gray-50 p-6 rounded-xl border border-gray-200 mb-10">
+            <h2 class="text-2xl font-bold mb-6">Status do Servidor</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-white p-4 rounded-lg border">
+                    <p class="text-xs text-gray-500 uppercase font-bold mb-1">Host</p>
+                    <p class="text-sm font-semibold text-gray-900"><%= system.hostname %></p>
+                    <p class="text-xs text-gray-500 mt-1"><%= system.platform %></p>
+                </div>
+                <div class="bg-white p-4 rounded-lg border">
+                    <p class="text-xs text-gray-500 uppercase font-bold mb-1">Uptime</p>
+                    <p class="text-sm font-semibold text-gray-900">Servidor: <%= system.serverUptime %></p>
+                    <p class="text-xs text-gray-500 mt-1">Processo: <%= system.processUptime %></p>
+                </div>
+                <div class="bg-white p-4 rounded-lg border">
+                    <p class="text-xs text-gray-500 uppercase font-bold mb-1">Carga</p>
+                    <p class="text-sm font-semibold text-gray-900"><%= system.loadAvg %></p>
+                    <p class="text-xs text-gray-500 mt-1">Node: <%= system.node %></p>
+                </div>
+                <div class="bg-white p-4 rounded-lg border">
+                    <p class="text-xs text-gray-500 uppercase font-bold mb-1">Memória (Host)</p>
+                    <p class="text-sm font-semibold text-gray-900"><%= system.memFreeMB %> MB livre</p>
+                    <p class="text-xs text-gray-500 mt-1"><%= system.memTotalMB %> MB total</p>
+                </div>
+                <div class="bg-white p-4 rounded-lg border">
+                    <p class="text-xs text-gray-500 uppercase font-bold mb-1">Memória (App)</p>
+                    <p class="text-sm font-semibold text-gray-900">RSS: <%= system.rssMB %> MB</p>
+                    <p class="text-xs text-gray-500 mt-1">Heap: <%= system.heapUsedMB %> MB</p>
+                </div>
+                <div class="bg-white p-4 rounded-lg border">
+                    <p class="text-xs text-gray-500 uppercase font-bold mb-1">Serviços</p>
+                    <p class="text-sm font-semibold text-gray-900">MongoDB: <%= system.mongoState %></p>
+                    <p class="text-xs text-gray-500 mt-1">Sessões WhatsApp (RAM): <%= system.waSessionsInMemory %></p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white p-4 rounded-lg border">
+                    <p class="text-xs text-gray-500 uppercase font-bold mb-2">Segurança (App)</p>
+                    <div class="text-sm text-gray-800 space-y-1">
+                        <div>Helmet: <span class="font-semibold"><%= security.helmet ? 'ativo' : 'inativo' %></span></div>
+                        <div>Rate limit (/auth): <span class="font-semibold"><%= security.rateLimit.max %></span> req / <span class="font-semibold"><%= security.rateLimit.windowMinutes %></span> min</div>
+                        <div>CORS methods: <span class="font-semibold"><%= security.cors.methods.join(', ') %></span></div>
+                        <div>CORS headers: <span class="font-semibold"><%= security.cors.allowedHeaders.join(', ') %></span></div>
+                        <div>trust proxy: <span class="font-semibold"><%= security.trustProxy ? 'sim' : 'não' %></span></div>
+                    </div>
+                </div>
+                <div class="bg-white p-4 rounded-lg border">
+                    <p class="text-xs text-gray-500 uppercase font-bold mb-2">Melhorias (Recomendado)</p>
+                    <div class="text-sm text-gray-800 space-y-1">
+                        <div>Use domínio + HTTPS para integrações em sites HTTPS.</div>
+                        <div>Restrinja IPs no Oracle (Ingress) quando possível.</div>
+                        <div>Use chaves SSH e desative login por senha no servidor.</div>
+                        <div>Ative fail2ban/limites no SSH para evitar brute force.</div>
+                        <div>Monitore CPU/RAM e reinicie containers em loops.</div>
+                    </div>
+                </div>
+            </div>
+
+            <% if (system.publicBaseUrl) { %>
+                <div class="mt-6 bg-white p-4 rounded-lg border">
+                    <p class="text-xs text-gray-500 uppercase font-bold mb-1">PUBLIC_BASE_URL</p>
+                    <p class="text-sm font-semibold text-gray-900 break-all"><%= system.publicBaseUrl %></p>
+                </div>
+            <% } %>
+        </div>
+
         <h2 class="text-2xl font-bold mb-6">Gerenciamento de Usuários</h2>
         
         <div class="overflow-x-auto">
