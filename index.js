@@ -77,6 +77,7 @@ mongoose.connect(MONGO_URI, mongoOptions)
 // Routes
 app.use('/auth', authRoutes);
 app.use('/api', apiRoutes);
+app.use('/', apiRoutes);
 
 // User Dashboard
 app.get('/dashboard', authMiddleware, async (req, res) => {
