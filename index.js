@@ -294,17 +294,12 @@ app.post('/api/regenerate-key', authMiddleware, async (req, res) => {
 // Public pages
 app.get('/login', (req, res) => res.render('login'));
 app.get('/register', (req, res) => res.render('register'));
-app.get('/', (req, res) => {
-    const token = req.cookies?.token;
-    if (token) {
-        try {
-            jwt.verify(token, process.env.JWT_SECRET);
-            return res.redirect('/dashboard');
-        } catch (e) {}
-    }
-    res.render('landing');
+app.get('/', (req, res) => res.redirect('/dashboard'));
+app.get('/precos', (req, res) => res.render('landing', { isTest: false }));
+
+app.get('/teste/precos', authMiddleware, adminMiddleware, (req, res) => {
+    res.render('landing', { isTest: true });
 });
-app.get('/precos', (req, res) => res.render('landing'));
 
 // Socket.io for QR updates
 io.on('connection', (socket) => {
