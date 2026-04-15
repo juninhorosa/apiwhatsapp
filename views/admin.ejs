@@ -16,6 +16,12 @@
     </nav>
 
     <div class="max-w-6xl mx-auto mt-10 p-6 bg-white rounded-lg shadow-md">
+        <% if (isTest) { %>
+            <div class="mb-8 p-3 bg-yellow-50 border border-yellow-200 text-yellow-900 rounded-lg text-sm font-semibold">
+                Ambiente de teste (/teste) ativo
+            </div>
+        <% } %>
+
         <!-- Stats Section -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
             <div class="bg-blue-50 p-6 rounded-xl border border-blue-100">

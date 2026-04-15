@@ -92,7 +92,7 @@ app.get('/dashboard', authMiddleware, async (req, res) => {
     const baseUrl = `${req.protocol}://${req.get('host')}`;
     const publicBaseUrl = (process.env.PUBLIC_BASE_URL || detectedBaseUrl).replace(/\/$/, '');
     const publicSendMessageUrl = `${publicBaseUrl}/api/send-message`;
-    res.render('dashboard', { user, sessionStatus: session.status, baseUrl, publicBaseUrl, publicSendMessageUrl });
+    res.render('dashboard', { user, sessionStatus: session.status, baseUrl, publicBaseUrl, publicSendMessageUrl, isTest: false });
 });
 
 // Admin Panel
@@ -168,7 +168,103 @@ app.get('/admin', authMiddleware, adminMiddleware, async (req, res) => {
             premiumUsers
         },
         system,
-        security
+        security,
+        isTest: false
+    });
+});
+
+app.get('/teste', authMiddleware, adminMiddleware, (req, res) => {
+    res.redirect('/teste/dashboard');
+});
+
+app.get('/teste/dashboard', authMiddleware, adminMiddleware, async (req, res) => {
+    const user = req.user;
+    const session = await whatsAppManager.getSession(user._id.toString());
+    const forwardedProto = (req.get('x-forwarded-proto') || '').split(',')[0].trim();
+    const forwardedHost = (req.get('x-forwarded-host') || '').split(',')[0].trim();
+    const effectiveProto = forwardedProto || req.protocol;
+    const effectiveHost = forwardedHost || req.get('host');
+    const detectedBaseUrl = `${effectiveProto}://${effectiveHost}`;
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const publicBaseUrl = (process.env.PUBLIC_BASE_URL || detectedBaseUrl).replace(/\/$/, '');
+    const publicSendMessageUrl = `${publicBaseUrl}/api/send-message`;
+    res.render('dashboard', { user, sessionStatus: session.status, baseUrl, publicBaseUrl, publicSendMessageUrl, isTest: true });
+});
+
+app.get('/teste/admin', authMiddleware, adminMiddleware, async (req, res) => {
+    const User = require('./models/User');
+    const MessageLog = require('./models/MessageLog');
+    
+    const users = await User.find();
+    const totalMessages = await MessageLog.countDocuments({ status: 'sent' });
+    const totalUsers = await User.countDocuments();
+    const premiumUsers = await User.countDocuments({ plan: 'premium' });
+
+    const bytesToMB = (bytes) => Math.round((bytes / 1024 / 1024) * 10) / 10;
+    const formatDuration = (totalSeconds) => {
+        const seconds = Math.max(0, Math.floor(totalSeconds));
+        const days = Math.floor(seconds / 86400);
+        const hours = Math.floor((seconds % 86400) / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        const secs = seconds % 60;
+        const parts = [];
+        if (days) parts.push(`${days}d`);
+        if (hours || days) parts.push(`${hours}h`);
+        if (minutes || hours || days) parts.push(`${minutes}m`);
+        parts.push(`${secs}s`);
+        return parts.join(' ');
+    };
+
+    const mongoStateMap = {
+        0: 'disconnected',
+        1: 'connected',
+        2: 'connecting',
+        3: 'disconnecting'
+    };
+    const mongoReadyState = mongoose.connection.readyState;
+    const mongoState = mongoStateMap[mongoReadyState] || 'unknown';
+    const processMem = process.memoryUsage();
+    const queueMetrics = typeof whatsAppManager.getQueueMetrics === 'function'
+        ? whatsAppManager.getQueueMetrics()
+        : { usersWithQueue: 0, totalPending: 0, delayMs: 0, maxQueuePerUser: 0 };
+
+    const system = {
+        hostname: os.hostname(),
+        platform: `${os.platform()} ${os.arch()}`,
+        node: process.version,
+        serverUptime: formatDuration(os.uptime()),
+        processUptime: formatDuration(process.uptime()),
+        loadAvg: os.loadavg().map(v => Math.round(v * 100) / 100).join(' / '),
+        memTotalMB: bytesToMB(os.totalmem()),
+        memFreeMB: bytesToMB(os.freemem()),
+        rssMB: bytesToMB(processMem.rss),
+        heapUsedMB: bytesToMB(processMem.heapUsed),
+        mongoState,
+        waSessionsInMemory: whatsAppManager.sessions ? whatsAppManager.sessions.size : 0,
+        queueUsers: queueMetrics.usersWithQueue,
+        queuePending: queueMetrics.totalPending,
+        queueDelayMs: queueMetrics.delayMs,
+        queueMaxPerUser: queueMetrics.maxQueuePerUser,
+        publicBaseUrl: process.env.PUBLIC_BASE_URL || ''
+    };
+
+    const security = {
+        trustProxy: Boolean(app.get('trust proxy')),
+        helmet: true,
+        rateLimit: { windowMinutes: 15, max: 100 },
+        cors: { methods: corsOptions.methods, allowedHeaders: corsOptions.allowedHeaders }
+    };
+
+    res.render('admin', { 
+        users, 
+        stats: {
+            totalMessages,
+            totalUsers,
+            premiumUsers
+        },
+        system,
+        security,
+        isTest: true
     });
 });
 
