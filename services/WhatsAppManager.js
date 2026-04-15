@@ -20,7 +20,76 @@ class WhatsAppManager {
         this.sessions = new Map();
         this.logger = P({ level: 'error' }); // Apenas logs de erro para não pesar
         this.timeouts = new Map();
+        this.sendQueues = new Map();
+        this.sendDelayMs = Number(process.env.WA_SEND_DELAY_MS || 350);
+        this.maxQueuePerUser = Number(process.env.WA_MAX_QUEUE_PER_USER || 300);
         this.sessionsBaseDir = process.env.SESSIONS_DIR || (fs.existsSync('/sessions') ? '/sessions' : path.join(__dirname, '..', 'sessions'));
+    }
+
+    createHttpError(statusCode, message) {
+        const err = new Error(message);
+        err.statusCode = statusCode;
+        return err;
+    }
+
+    async enqueueMessage(userId, taskFn) {
+        if (!this.sendQueues.has(userId)) {
+            this.sendQueues.set(userId, { processing: false, items: [] });
+        }
+
+        const queue = this.sendQueues.get(userId);
+        if (queue.items.length >= this.maxQueuePerUser) {
+            throw this.createHttpError(429, 'Fila de envio cheia para este usuário. Aguarde e tente novamente.');
+        }
+
+        this.resetIdleTimeout(userId);
+
+        return await new Promise((resolve, reject) => {
+            queue.items.push({ taskFn, resolve, reject });
+            this.processQueue(userId).catch(() => {});
+        });
+    }
+
+    async processQueue(userId) {
+        const queue = this.sendQueues.get(userId);
+        if (!queue || queue.processing) return;
+
+        queue.processing = true;
+        while (queue.items.length > 0) {
+            const item = queue.items.shift();
+            try {
+                const result = await item.taskFn();
+                item.resolve(result);
+            } catch (err) {
+                item.reject(err);
+            }
+
+            if (this.sendDelayMs > 0) {
+                await new Promise((r) => setTimeout(r, this.sendDelayMs));
+            }
+        }
+
+        queue.processing = false;
+        if (queue.items.length === 0) {
+            this.sendQueues.delete(userId);
+        }
+    }
+
+    getQueueMetrics() {
+        let totalPending = 0;
+        let usersWithQueue = 0;
+        for (const [, queue] of this.sendQueues.entries()) {
+            if (queue.items.length > 0 || queue.processing) {
+                usersWithQueue += 1;
+                totalPending += queue.items.length;
+            }
+        }
+        return {
+            usersWithQueue,
+            totalPending,
+            delayMs: this.sendDelayMs,
+            maxQueuePerUser: this.maxQueuePerUser
+        };
     }
 
     async getBaileysVersion() {
@@ -168,6 +237,7 @@ class WhatsAppManager {
             this.sessions.delete(userId);
             this.timeouts.delete(userId);
         }
+        this.sendQueues.delete(userId);
     }
 
     async deleteSession(userId) {
@@ -180,6 +250,7 @@ class WhatsAppManager {
             this.sessions.delete(userId);
             this.timeouts.delete(userId);
         }
+        this.sendQueues.delete(userId);
         const authPath = path.join(this.sessionsBaseDir, userId);
         if (fs.existsSync(authPath)) {
             fs.rmSync(authPath, { recursive: true, force: true });

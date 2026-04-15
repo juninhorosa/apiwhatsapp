@@ -271,8 +271,35 @@ Body: {
         function copyKey() {
             const el = document.getElementById('apiKey');
             if (!el) return;
-            const key = el.innerText;
-            navigator.clipboard.writeText(key).then(() => alert('Chave copiada!'));
+            const key = el.innerText.trim();
+            if (!key) return;
+
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(key)
+                    .then(() => alert('Chave copiada!'))
+                    .catch(() => fallbackCopyText(key));
+                return;
+            }
+
+            fallbackCopyText(key);
+        }
+
+        function fallbackCopyText(text) {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.opacity = '0';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                alert('Chave copiada!');
+            } catch (e) {
+                alert('Não foi possível copiar automaticamente. Copie manualmente a chave.');
+            } finally {
+                document.body.removeChild(textArea);
+            }
         }
 
         async function regenerateKey() {

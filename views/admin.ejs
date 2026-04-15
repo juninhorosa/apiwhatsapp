@@ -64,6 +64,8 @@
                     <p class="text-xs text-gray-500 uppercase font-bold mb-1">Serviços</p>
                     <p class="text-sm font-semibold text-gray-900">MongoDB: <%= system.mongoState %></p>
                     <p class="text-xs text-gray-500 mt-1">Sessões WhatsApp (RAM): <%= system.waSessionsInMemory %></p>
+                    <p class="text-xs text-gray-500 mt-1">Fila: <%= system.queuePending %> pendentes / <%= system.queueUsers %> usuários</p>
+                    <p class="text-xs text-gray-500 mt-1">Delay fila: <%= system.queueDelayMs %>ms | Máx/usuário: <%= system.queueMaxPerUser %></p>
                 </div>
             </div>
 

@@ -3,6 +3,7 @@ const router = express.Router();
 const { apiAuthMiddleware } = require('../middleware/auth');
 const trialMiddleware = require('../middleware/trial');
 const MessageLog = require('../models/MessageLog');
+const User = require('../models/User');
 
 router.post('/send-message', apiAuthMiddleware, trialMiddleware, async (req, res) => {
     const { number, message } = req.body;
@@ -14,51 +15,73 @@ router.post('/send-message', apiAuthMiddleware, trialMiddleware, async (req, res
     }
 
     try {
-        const session = await whatsAppManager.getSession(user._id.toString());
-        if (session.status !== 'connected') {
-            return res.status(400).json({ error: 'WhatsApp não conectado' });
-        }
+        const userId = user._id.toString();
+        const result = await whatsAppManager.enqueueMessage(userId, async () => {
+            const freshUser = await User.findById(userId);
+            if (!freshUser || freshUser.status !== 'active') {
+                const e = new Error('Conta bloqueada ou não encontrada');
+                e.statusCode = 401;
+                throw e;
+            }
 
-        let cleanNumber = number.replace(/\D/g, '');
-        if (!cleanNumber.startsWith('55') && (cleanNumber.length === 10 || cleanNumber.length === 11)) {
-            cleanNumber = `55${cleanNumber}`;
-        }
-        const jid = cleanNumber.includes('@s.whatsapp.net') ? cleanNumber : `${cleanNumber}@s.whatsapp.net`;
+            // Revalidação dentro da fila evita corrida quando chegam várias requisições ao mesmo tempo.
+            await freshUser.checkAndResetLimit();
+            if (freshUser.plan === 'free' && freshUser.messagesSentToday >= freshUser.dailyLimit) {
+                const e = new Error('Limite diário de teste atingido. Faça o upgrade para o plano Premium para envios ilimitados.');
+                e.statusCode = 403;
+                throw e;
+            }
 
-        // Verifica se o número existe no WhatsApp
-        const [result] = await session.sock.onWhatsApp(jid);
-        if (!result || !result.exists) {
-            return res.status(400).json({ error: 'Número não registrado no WhatsApp' });
-        }
+            const session = await whatsAppManager.getSession(userId);
+            if (session.status !== 'connected') {
+                const e = new Error('WhatsApp não conectado');
+                e.statusCode = 400;
+                throw e;
+            }
 
-        // Envia usando o JID real retornado pelo WhatsApp
-        const realJid = result.jid;
-        await session.sock.sendMessage(realJid, { text: message });
+            let cleanNumber = number.replace(/\D/g, '');
+            if (!cleanNumber.startsWith('55') && (cleanNumber.length === 10 || cleanNumber.length === 11)) {
+                cleanNumber = `55${cleanNumber}`;
+            }
+            const jid = cleanNumber.includes('@s.whatsapp.net') ? cleanNumber : `${cleanNumber}@s.whatsapp.net`;
 
-        // Increment trial counter
-        user.messagesSentToday += 1;
-        await user.save();
+            const [waLookup] = await session.sock.onWhatsApp(jid);
+            if (!waLookup || !waLookup.exists) {
+                const e = new Error('Número não registrado no WhatsApp');
+                e.statusCode = 400;
+                throw e;
+            }
 
-        // Log message to history
-        await new MessageLog({
-            userId: user._id,
-            number: cleanNumber,
-            message: message,
-            status: 'sent'
-        }).save();
+            await session.sock.sendMessage(waLookup.jid, { text: message });
 
-        res.json({ success: true, info: 'Mensagem enviada com sucesso', remaining: user.plan === 'free' ? user.dailyLimit - user.messagesSentToday : 'unlimited' });
+            freshUser.messagesSentToday += 1;
+            await freshUser.save();
+
+            await new MessageLog({
+                userId: freshUser._id,
+                number: cleanNumber,
+                message,
+                status: 'sent'
+            }).save();
+
+            return {
+                remaining: freshUser.plan === 'free' ? freshUser.dailyLimit - freshUser.messagesSentToday : 'unlimited'
+            };
+        });
+
+        res.json({ success: true, info: 'Mensagem enviada com sucesso', remaining: result.remaining });
     } catch (err) {
-        // Log error to history
         await new MessageLog({
             userId: user._id,
-            number: number,
-            message: message,
+            number,
+            message,
             status: 'error',
             errorDetails: err.message
         }).save();
-        
-        res.status(500).json({ error: 'Erro ao enviar mensagem', details: err.message });
+
+        const statusCode = err.statusCode || 500;
+        const defaultMsg = statusCode === 500 ? 'Erro ao enviar mensagem' : err.message;
+        res.status(statusCode).json({ error: defaultMsg, details: err.message });
     }
 });
 

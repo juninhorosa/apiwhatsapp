@@ -129,6 +129,9 @@ app.get('/admin', authMiddleware, adminMiddleware, async (req, res) => {
     const mongoReadyState = mongoose.connection.readyState;
     const mongoState = mongoStateMap[mongoReadyState] || 'unknown';
     const processMem = process.memoryUsage();
+    const queueMetrics = typeof whatsAppManager.getQueueMetrics === 'function'
+        ? whatsAppManager.getQueueMetrics()
+        : { usersWithQueue: 0, totalPending: 0, delayMs: 0, maxQueuePerUser: 0 };
 
     const system = {
         hostname: os.hostname(),
@@ -143,6 +146,10 @@ app.get('/admin', authMiddleware, adminMiddleware, async (req, res) => {
         heapUsedMB: bytesToMB(processMem.heapUsed),
         mongoState,
         waSessionsInMemory: whatsAppManager.sessions ? whatsAppManager.sessions.size : 0,
+        queueUsers: queueMetrics.usersWithQueue,
+        queuePending: queueMetrics.totalPending,
+        queueDelayMs: queueMetrics.delayMs,
+        queueMaxPerUser: queueMetrics.maxQueuePerUser,
         publicBaseUrl: process.env.PUBLIC_BASE_URL || ''
     };
 

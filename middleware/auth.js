@@ -13,8 +13,12 @@ const authMiddleware = async (req, res, next) => {
         // Garante que o usuário tem apiKey (migração de usuários antigos)
         if (!user.apiKey) {
             const crypto = require('crypto');
-            user.apiKey = crypto.randomBytes(24).toString('hex');
-            await user.save();
+            const generatedKey = crypto.randomBytes(24).toString('hex');
+            await User.updateOne(
+                { _id: user._id, $or: [{ apiKey: { $exists: false } }, { apiKey: null }, { apiKey: '' }] },
+                { $set: { apiKey: generatedKey } }
+            );
+            user.apiKey = generatedKey;
         }
 
         req.user = user;
