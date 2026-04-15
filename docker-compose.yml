@@ -2,17 +2,11 @@ services:
   app:
     build: .
     ports:
+      - "80:3000"
       - "3000:3000"
     env_file: .env
     volumes:
       - ./sessions:/sessions
     restart: always
-
-  cloudflared:
-    image: cloudflare/cloudflared:latest
-    command: sh -c 'if [ -n "$$CLOUDFLARED_TOKEN" ]; then cloudflared tunnel --no-autoupdate run --token "$$CLOUDFLARED_TOKEN"; else cloudflared tunnel --no-autoupdate --protocol http2 --url http://app:3000; fi'
-    restart: always
-    depends_on:
-      - app
 
 # Serviço do MongoDB Local REMOVIDO para economizar RAM da VPS (Usando MongoDB Atlas na Nuvem)
